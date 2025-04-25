@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -9,36 +9,41 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v53/github"
+	"github.com/revanite-io/sci/pkg/layer2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
+
+type cccMetadata struct {
+	Metadata             layer2.Metadata  `yaml:"metadata"`
+	ReleaseDetails       []ReleaseDetails `yaml:"release_details"`
+	LatestReleaseDetails ReleaseDetails   `yaml:"latest_release_details"`
+}
 
 var (
 	BuildDirectoryPath string
 	MetadataFilePath   string
 
 	// baseCmd represents the base command when called without any subcommands
-	updateMetadataCmd = &cobra.Command{
+	UpdateMetadata = &cobra.Command{
 		Use:   "update-metadata",
 		Short: "",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			fmt.Print(divider)
-			fmt.Print(logo)
-			fmt.Println(divider)
+			fmt.Print(Divider)
+			fmt.Print(Logo)
+			fmt.Println(Divider)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			fmt.Println(divider)
+			fmt.Println(Divider)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			checkArgs()
+			if len(args) < 1 {
+				fmt.Println("Please stipulate a directory to update.")
+				return
+			}
 
-			servicesDir := viper.GetString("services-dir")
-			buildTarget := viper.GetString("build-target")
-
-			BuildDirectoryPath = filepath.Join(servicesDir, buildTarget)
-			MetadataFilePath = filepath.Join(BuildDirectoryPath, "metadata.yaml")
+			MetadataFilePath = filepath.Join(args[0], "metadata.yaml")
 
 			err := updateMetadata()
 			if err != nil {
@@ -49,10 +54,6 @@ var (
 		},
 	}
 )
-
-func init() {
-	baseCmd.AddCommand(updateMetadataCmd)
-}
 
 func updateMetadata() (err error) {
 	// Replace with your GitHub personal access token
@@ -145,21 +146,19 @@ func updateMetadata() (err error) {
 	return
 }
 
-func getMetadataYaml() Metadata {
+func getMetadataYaml() cccMetadata {
 	// Read the YAML file
 	yamlFile, err := os.ReadFile(MetadataFilePath)
 	if err != nil {
 		log.Fatalf("Error reading YAML file: %v", err)
 	}
 
-	// Create a ReleaseDetails struct to hold the data
-	var metadata Metadata
-
+	var data cccMetadata
 	// Unmarshal the YAML into the struct
-	err = yaml.Unmarshal(yamlFile, &metadata)
+	err = yaml.Unmarshal(yamlFile, &data)
 	if err != nil {
 		log.Fatalf("Error unmarshaling YAML: %v", err)
 	}
 
-	return metadata
+	return data
 }
