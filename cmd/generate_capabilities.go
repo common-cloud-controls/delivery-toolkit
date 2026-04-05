@@ -25,6 +25,29 @@ func inferCatalogID(capabilities []gemara.Capability) string {
 }
 
 const githubRawBase = "https://raw.githubusercontent.com/common-cloud-controls/capability-catalogs/refs/heads/main"
+const githubRawCoreBase = "https://raw.githubusercontent.com/common-cloud-controls/core-catalog/refs/heads/main"
+
+const corePath = "core/ccc"
+
+// resolveGitHubURL returns the full GitHub raw URL for a catalog file.
+// The core catalog (path "core/ccc") lives in a separate repo; all others
+// use the provided repoBase.
+func resolveGitHubURL(repoBase, catalogPath, filename string) string {
+	if catalogPath == corePath {
+		return githubRawCoreBase + "/ccc/" + filename
+	}
+	return repoBase + "/" + catalogPath + "/" + filename
+}
+
+// resolveLocalPath returns the filesystem path to a catalog file.
+// For "core/ccc", the core-catalog repo stores files under ccc/ (not core/ccc/),
+// so the caller should pass the root of that repo as dir.
+func resolveLocalPath(dir, catalogPath, filename string) string {
+	if catalogPath == corePath {
+		return filepath.Join(dir, "ccc", filename)
+	}
+	return filepath.Join(dir, catalogPath, filename)
+}
 
 var generateCapabilitiesCmd = &cobra.Command{
 	Use:   "capabilities <path> <title>",
@@ -34,8 +57,9 @@ injects metadata, and writes capabilities.yaml and capabilities.md to <output-di
 
 The title is wrapped to form: "CCC <title> Capabilities"
 
-If --capabilities-dir is not provided, the catalog is fetched from:
-  ` + githubRawBase + `/<path>/capabilities.yaml`,
+If --capabilities-dir is not provided, the catalog is fetched from GitHub.
+For most paths: ` + githubRawBase + `/<path>/capabilities.yaml
+For core/ccc:   ` + githubRawCoreBase + `/ccc/capabilities.yaml`,
 	Args: cobra.ExactArgs(2),
 	RunE: runGenerateCapabilities,
 }
@@ -53,10 +77,8 @@ func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 
 	// Load capabilities.yaml — from disk or GitHub
 	var data []byte
-	var err error
 	if capabilitiesDir != "" {
-		inputFile := filepath.Join(capabilitiesDir, catalogPath, "capabilities.yaml")
-		absInput, err := filepath.Abs(inputFile)
+		absInput, err := filepath.Abs(resolveLocalPath(capabilitiesDir, catalogPath, "capabilities.yaml"))
 		if err != nil {
 			return fmt.Errorf("resolving input path: %w", err)
 		}
@@ -65,7 +87,8 @@ func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reading %s: %w", absInput, err)
 		}
 	} else {
-		url := githubRawBase + "/" + catalogPath + "/capabilities.yaml"
+		url := resolveGitHubURL(githubRawBase, catalogPath, "capabilities.yaml")
+		var err error
 		data, err = fetchURL(url)
 		if err != nil {
 			return fmt.Errorf("fetching %s: %w", url, err)

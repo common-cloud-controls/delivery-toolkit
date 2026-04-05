@@ -20,8 +20,9 @@ injects metadata, and writes threats.yaml and threats.md to <output-dir>/<path>/
 
 The title is wrapped to form: "CCC <title> Threats"
 
-If --threats-dir is not provided, the catalog is fetched from:
-  ` + githubRawThreatsBase + `/<path>/threats.yaml
+If --threats-dir is not provided, the catalog is fetched from GitHub.
+For most paths: ` + githubRawThreatsBase + `/<path>/threats.yaml
+For core/ccc:   ` + githubRawCoreBase + `/ccc/threats.yaml
 
 Note: source files must use the 'imports' key (not 'imported-threats') for
 imported threats to be parsed. See the threat-catalogs migration.`,
@@ -42,10 +43,8 @@ func runGenerateThreats(cmd *cobra.Command, args []string) error {
 
 	// Load threats.yaml — from disk or GitHub
 	var data []byte
-	var err error
 	if threatsDir != "" {
-		inputFile := filepath.Join(threatsDir, catalogPath, "threats.yaml")
-		absInput, err := filepath.Abs(inputFile)
+		absInput, err := filepath.Abs(resolveLocalPath(threatsDir, catalogPath, "threats.yaml"))
 		if err != nil {
 			return fmt.Errorf("resolving input path: %w", err)
 		}
@@ -54,7 +53,8 @@ func runGenerateThreats(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reading %s: %w", absInput, err)
 		}
 	} else {
-		url := githubRawThreatsBase + "/" + catalogPath + "/threats.yaml"
+		url := resolveGitHubURL(githubRawThreatsBase, catalogPath, "threats.yaml")
+		var err error
 		data, err = fetchURL(url)
 		if err != nil {
 			return fmt.Errorf("fetching %s: %w", url, err)

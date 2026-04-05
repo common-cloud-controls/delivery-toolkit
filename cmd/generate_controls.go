@@ -20,8 +20,9 @@ injects metadata, and writes controls.yaml and controls.md to <output-dir>/<path
 
 The title is wrapped to form: "CCC <title> Controls"
 
-If --controls-dir is not provided, the catalog is fetched from:
-  ` + githubRawControlsBase + `/<path>/controls.yaml`,
+If --controls-dir is not provided, the catalog is fetched from GitHub.
+For most paths: ` + githubRawControlsBase + `/<path>/controls.yaml
+For core/ccc:   ` + githubRawCoreBase + `/ccc/controls.yaml`,
 	Args: cobra.ExactArgs(2),
 	RunE: runGenerateControls,
 }
@@ -39,10 +40,8 @@ func runGenerateControls(cmd *cobra.Command, args []string) error {
 
 	// Load controls.yaml — from disk or GitHub
 	var data []byte
-	var err error
 	if controlsDir != "" {
-		inputFile := filepath.Join(controlsDir, catalogPath, "controls.yaml")
-		absInput, err := filepath.Abs(inputFile)
+		absInput, err := filepath.Abs(resolveLocalPath(controlsDir, catalogPath, "controls.yaml"))
 		if err != nil {
 			return fmt.Errorf("resolving input path: %w", err)
 		}
@@ -51,7 +50,8 @@ func runGenerateControls(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reading %s: %w", absInput, err)
 		}
 	} else {
-		url := githubRawControlsBase + "/" + catalogPath + "/controls.yaml"
+		url := resolveGitHubURL(githubRawControlsBase, catalogPath, "controls.yaml")
+		var err error
 		data, err = fetchURL(url)
 		if err != nil {
 			return fmt.Errorf("fetching %s: %w", url, err)
