@@ -10,4 +10,5 @@ var GenerateCmd = &cobra.Command{
 
 func init() {
 	GenerateCmd.AddCommand(generateCapabilitiesCmd)
+	GenerateCmd.AddCommand(generateThreatsCmd)
 }

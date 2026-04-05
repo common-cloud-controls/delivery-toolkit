@@ -1,0 +1,118 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	gemara "github.com/gemaraproj/go-gemara"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+)
+
+const githubRawThreatsBase = "https://raw.githubusercontent.com/common-cloud-controls/threat-catalogs/refs/heads/main"
+
+var generateThreatsCmd = &cobra.Command{
+	Use:   "threats <path> <title>",
+	Short: "Generate YAML and Markdown from a threats catalog",
+	Long: `Reads a threats.yaml at <threats-dir>/<path>/threats.yaml,
+injects metadata, and writes threats.yaml and threats.md to <output-dir>/<path>/.
+
+The title is wrapped to form: "CCC <title> Threats"
+
+If --threats-dir is not provided, the catalog is fetched from:
+  ` + githubRawThreatsBase + `/<path>/threats.yaml
+
+Note: source files must use the 'imports' key (not 'imported-threats') for
+imported threats to be parsed. See the threat-catalogs migration.`,
+	Args: cobra.ExactArgs(2),
+	RunE: runGenerateThreats,
+}
+
+func init() {
+	generateThreatsCmd.Flags().String("threats-dir", "", "Root of the threat-catalogs repo (omit to fetch from GitHub)")
+	generateThreatsCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+}
+
+func runGenerateThreats(cmd *cobra.Command, args []string) error {
+	catalogPath := args[0]
+	catalogTitle := "CCC " + args[1] + " Threats"
+	threatsDir, _ := cmd.Flags().GetString("threats-dir")
+	outputDir, _ := cmd.Flags().GetString("output-dir")
+
+	// Load threats.yaml — from disk or GitHub
+	var data []byte
+	var err error
+	if threatsDir != "" {
+		inputFile := filepath.Join(threatsDir, catalogPath, "threats.yaml")
+		absInput, err := filepath.Abs(inputFile)
+		if err != nil {
+			return fmt.Errorf("resolving input path: %w", err)
+		}
+		data, err = os.ReadFile(absInput)
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", absInput, err)
+		}
+	} else {
+		url := githubRawThreatsBase + "/" + catalogPath + "/threats.yaml"
+		data, err = fetchURL(url)
+		if err != nil {
+			return fmt.Errorf("fetching %s: %w", url, err)
+		}
+	}
+
+	var catalog gemara.ThreatCatalog
+	if err := yaml.Unmarshal(data, &catalog); err != nil {
+		return fmt.Errorf("parsing threats.yaml: %w", err)
+	}
+
+	// Inject hardcoded metadata
+	catalog.Title = catalogTitle
+	catalog.Metadata = gemara.Metadata{
+		Id:            inferThreatCatalogID(catalog.Threats),
+		Type:          gemara.ThreatCatalogArtifact,
+		GemaraVersion: "v0",
+		Description:   "Threats for " + args[1] + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Author: gemara.Actor{
+			Id:   "FINOS-CCC",
+			Name: "FINOS Common Cloud Controls",
+			Type: gemara.Human,
+		},
+	}
+
+	// Prepare output directory
+	outDir := filepath.Join(outputDir, catalogPath)
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+
+	// Write YAML
+	yamlOut, err := yaml.Marshal(&catalog)
+	if err != nil {
+		return fmt.Errorf("marshaling YAML: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, "threats.yaml"), yamlOut, 0644); err != nil {
+		return fmt.Errorf("writing threats.yaml: %w", err)
+	}
+
+	// Write Markdown
+	md, err := renderThreatsMarkdown(&catalog)
+	if err != nil {
+		return fmt.Errorf("rendering Markdown: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, "threats.md"), []byte(md), 0644); err != nil {
+		return fmt.Errorf("writing threats.md: %w", err)
+	}
+
+	fmt.Printf("Generated artifacts in %s\n", outDir)
+	return nil
+}
+
+// inferThreatCatalogID derives the catalog ID from threat entry IDs by stripping
+// the trailing numeric suffix. e.g. "CCC.ObjStor.TH01" → "CCC.ObjStor.TH"
+func inferThreatCatalogID(threats []gemara.Threat) string {
+	if len(threats) == 0 {
+		return "CCC"
+	}
+	return trailingDigits.ReplaceAllString(threats[0].Id, "")
+}
