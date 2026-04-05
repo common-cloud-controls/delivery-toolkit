@@ -30,21 +30,21 @@ const githubRawCoreBase = "https://raw.githubusercontent.com/common-cloud-contro
 const corePath = "core/ccc"
 
 // resolveGitHubURL returns the full GitHub raw URL for a catalog file.
-// The core catalog (path "core/ccc") lives in a separate repo; all others
-// use the provided repoBase.
+// The core catalog (path "core/ccc") lives in a separate repo with files at
+// the root; all others use the provided repoBase with the path as a subdirectory.
 func resolveGitHubURL(repoBase, catalogPath, filename string) string {
 	if catalogPath == corePath {
-		return githubRawCoreBase + "/ccc/" + filename
+		return githubRawCoreBase + "/" + filename
 	}
 	return repoBase + "/" + catalogPath + "/" + filename
 }
 
 // resolveLocalPath returns the filesystem path to a catalog file.
-// For "core/ccc", the core-catalog repo stores files under ccc/ (not core/ccc/),
-// so the caller should pass the root of that repo as dir.
+// For "core/ccc", files are at the root of the core-catalog repo,
+// so the caller passes that repo root as dir.
 func resolveLocalPath(dir, catalogPath, filename string) string {
 	if catalogPath == corePath {
-		return filepath.Join(dir, "ccc", filename)
+		return filepath.Join(dir, filename)
 	}
 	return filepath.Join(dir, catalogPath, filename)
 }
@@ -59,7 +59,7 @@ The title is wrapped to form: "CCC <title> Capabilities"
 
 If --capabilities-dir is not provided, the catalog is fetched from GitHub.
 For most paths: ` + githubRawBase + `/<path>/capabilities.yaml
-For core/ccc:   ` + githubRawCoreBase + `/ccc/capabilities.yaml`,
+For core/ccc:   ` + githubRawCoreBase + `/capabilities.yaml`,
 	Args: cobra.ExactArgs(2),
 	RunE: runGenerateCapabilities,
 }

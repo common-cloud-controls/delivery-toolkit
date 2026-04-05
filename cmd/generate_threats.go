@@ -22,7 +22,7 @@ The title is wrapped to form: "CCC <title> Threats"
 
 If --threats-dir is not provided, the catalog is fetched from GitHub.
 For most paths: ` + githubRawThreatsBase + `/<path>/threats.yaml
-For core/ccc:   ` + githubRawCoreBase + `/ccc/threats.yaml
+For core/ccc:   ` + githubRawCoreBase + `/threats.yaml
 
 Note: source files must use the 'imports' key (not 'imported-threats') for
 imported threats to be parsed. See the threat-catalogs migration.`,

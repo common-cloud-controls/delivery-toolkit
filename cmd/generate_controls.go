@@ -22,7 +22,7 @@ The title is wrapped to form: "CCC <title> Controls"
 
 If --controls-dir is not provided, the catalog is fetched from GitHub.
 For most paths: ` + githubRawControlsBase + `/<path>/controls.yaml
-For core/ccc:   ` + githubRawCoreBase + `/ccc/controls.yaml`,
+For core/ccc:   ` + githubRawCoreBase + `/controls.yaml`,
 	Args: cobra.ExactArgs(2),
 	RunE: runGenerateControls,
 }
