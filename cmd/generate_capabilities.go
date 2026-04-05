@@ -6,23 +6,37 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	gemara "github.com/gemaraproj/go-gemara"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
+var trailingDigits = regexp.MustCompile(`\d+$`)
+
+// inferCatalogID derives the catalog ID from capability entry IDs by stripping
+// the trailing numeric suffix. e.g. "CCC.ObjStor.CP01" → "CCC.ObjStor.CP"
+func inferCatalogID(capabilities []gemara.Capability) string {
+	if len(capabilities) == 0 {
+		return "CCC"
+	}
+	return trailingDigits.ReplaceAllString(capabilities[0].Id, "")
+}
+
 const githubRawBase = "https://raw.githubusercontent.com/common-cloud-controls/capability-catalogs/refs/heads/main"
 
 var generateCapabilitiesCmd = &cobra.Command{
-	Use:   "capabilities <path>",
+	Use:   "capabilities <path> <title>",
 	Short: "Generate YAML and Markdown from a capabilities catalog",
 	Long: `Reads a capabilities.yaml at <capabilities-dir>/<path>/capabilities.yaml,
 injects metadata, and writes capabilities.yaml and capabilities.md to <output-dir>/<path>/.
 
+The title is wrapped to form: "CCC <title> Capabilities"
+
 If --capabilities-dir is not provided, the catalog is fetched from:
   ` + githubRawBase + `/<path>/capabilities.yaml`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.ExactArgs(2),
 	RunE: runGenerateCapabilities,
 }
 
@@ -33,6 +47,7 @@ func init() {
 
 func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 	catalogPath := args[0]
+	catalogTitle := "CCC " + args[1] + " Capabilities"
 	capabilitiesDir, _ := cmd.Flags().GetString("capabilities-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
 
@@ -64,12 +79,12 @@ func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 
 	// Inject hardcoded metadata
 	// TODO: replace ControlCatalogArtifact with a CapabilityCatalogArtifact once added to go-gemara
-	catalog.Title = catalogPath
+	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:            "CCC",
+		Id:            inferCatalogID(catalog.Capabilities),
 		Type:          gemara.ControlCatalogArtifact,
 		GemaraVersion: "v0",
-		Description:   "Capability catalog for " + catalogPath,
+		Description:   "Capabilities for " + args[1] + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
