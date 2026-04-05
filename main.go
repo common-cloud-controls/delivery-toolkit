@@ -3,52 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/finos/common-cloud-controls/cmd"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var (
-	baseCmd = &cobra.Command{
-		Use:   "",
-		Short: "A CLI for the Common Cloud Controls project",
-		PersistentPreRun: func(command *cobra.Command, args []string) {
-			fmt.Println(cmd.Divider)
-			fmt.Println(cmd.Logo)
-		},
-		PersistentPostRun: func(command *cobra.Command, args []string) {
-			fmt.Println(cmd.Divider)
-		},
-		Run: func(command *cobra.Command, args []string) {
-			fmt.Println("Welcome to the CCC Delivery Toolkit CLI")
-			fmt.Println(cmd.Divider)
-			fmt.Println("You appear to be exploring!")
-			fmt.Println("We suggest you begin by running the 'help' command via -h to review the available options.")
-		},
-	}
-)
+var rootCmd = &cobra.Command{
+	Use:   "ccc",
+	Short: "CCC — Common Cloud Controls CLI",
+}
 
 func init() {
-	// Set & Bind Flags
-	baseCmd.PersistentFlags().StringP("build-target", "t", "", "Name of the category and service (eg. storage/object)")
-	baseCmd.PersistentFlags().StringP("output-dir", "o", ".", "Path to the directory where the compiled assets will be stored")
-	baseCmd.PersistentFlags().StringP("catalogs-dir", "", filepath.Join("..", "catalogs"), "Path to the top level of the catalogs directory")
-	viper.BindPFlag("build-target", baseCmd.PersistentFlags().Lookup("build-target"))
-	viper.BindPFlag("output-dir", baseCmd.PersistentFlags().Lookup("output-dir"))
-	viper.BindPFlag("catalogs-dir", baseCmd.PersistentFlags().Lookup("catalogs-dir"))
-
-	// Add subcommands
-	baseCmd.AddCommand(
-		cmd.VerifyContent,
-		cmd.UpdateMetadata,
-		cmd.GenerateReleaseArtifacts,
-	)
+	rootCmd.AddCommand(cmd.GenerateCmd)
 }
 
 func main() {
-	if err := baseCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
