@@ -12,4 +12,5 @@ func init() {
 	GenerateCmd.AddCommand(generateCapabilitiesCmd)
 	GenerateCmd.AddCommand(generateThreatsCmd)
 	GenerateCmd.AddCommand(generateControlsCmd)
+	GenerateCmd.AddCommand(generateAllCmd)
 }

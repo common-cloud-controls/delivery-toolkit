@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 // ReleaseCmd is the `ccc release` subcommand group.
 var ReleaseCmd = &cobra.Command{
 	Use:   "release",
-	Short: "Release CCC catalog artifacts",
+	Short: "Build and validate catalog artifacts (step 1 of 2 — run before publish)",
 	Long:  "Generate and validate catalog artifacts for release. Fails fast before any publish step.",
 }
 

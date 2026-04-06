@@ -5,7 +5,7 @@ import "github.com/spf13/cobra"
 var releaseControlsCmd = &cobra.Command{
 	Use:   "controls <path> <title>",
 	Short: "Release YAML and Markdown from a controls catalog",
-	Long:  "Identical to `ccc generate controls` — exists as a distinct command so CI pipelines have a named failure point before publish.",
+	Long:  "Reads a controls.yaml, injects CCC metadata, and writes controls.yaml and controls.md to <output-dir>/<path>/. Identical to `ccc generate controls` but intended as a named CI step that must pass before `ccc publish` runs.",
 	Args:  cobra.ExactArgs(2),
 	RunE:  runGenerateControls,
 }
