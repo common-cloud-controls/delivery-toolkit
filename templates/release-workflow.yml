@@ -1,11 +1,8 @@
-# Release workflow for CCC catalog repositories.
-# Copy this file to .github/workflows/release.yml and set the env vars below.
+# Release workflow template for CCC catalog repositories.
+# Copy to .github/workflows/release.yml and fill in the matrix entries for your services.
+# See capability-catalogs, threat-catalogs, or control-catalogs for real examples.
 
 name: Release
-
-env:
-  CATALOG_PATH: ""   # e.g. storage/object
-  CATALOG_TITLE: ""  # e.g. Object Storage
 
 on:
   push:
@@ -15,33 +12,48 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - path: ""    # e.g. storage/object
+            title: ""   # e.g. Object Storage
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
         with:
-          go-version-file: go.mod
+          fetch-depth: 0  # required to compare against previous tags
 
-      - name: Install ccc
-        run: go install github.com/finos/common-cloud-controls@latest
+      - name: Check for changes since last release
+        id: changes
+        run: |
+          PREV_TAG=$(git describe --abbrev=0 --tags HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag — including ${{ matrix.path }} in first release"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif git log "${PREV_TAG}..HEAD" --oneline -- "${{ matrix.path }}" | grep -q .; then
+            echo "Changes detected in ${{ matrix.path }} since ${PREV_TAG}"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes in ${{ matrix.path }} since ${PREV_TAG} — skipping"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Release artifacts
-        run: ccc release all ${{ env.CATALOG_PATH }} "${{ env.CATALOG_TITLE }}"
-
-      - name: Get website token
-        uses: actions/create-github-app-token@v1
+      - name: Get app token
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/create-github-app-token@v3
         id: app-token
         with:
-          app-id: ${{ vars.CCC_BOT_APP_ID }}
+          app-id: ${{ secrets.CCC_BOT_APP_ID }}
           private-key: ${{ secrets.CCC_BOT_PRIVATE_KEY }}
           owner: common-cloud-controls
-          repositories: website-new
+          repositories: common-cloud-controls.github.io
 
-      - name: Publish to website
-        run: |
-          ccc publish all ${{ env.CATALOG_PATH }} \
-            --tag ${{ github.ref_name }} \
-            --website-repo common-cloud-controls/website-new
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Release and publish
+        if: steps.changes.outputs.changed == 'true'
+        uses: common-cloud-controls/delivery-toolkit@main
+        with:
+          type: capabilities  # capabilities | threats | controls | all
+          path: ${{ matrix.path }}
+          title: ${{ matrix.title }}
+          token: ${{ steps.app-token.outputs.token }}

@@ -98,13 +98,21 @@ The app credentials are stored as org-level Actions secrets:
 
 ### CI workflow
 
-A ready-to-use workflow template is at [`templates/release-workflow.yml`](templates/release-workflow.yml). Copy it to `.github/workflows/release.yml` in the catalog repo and set the `CATALOG_PATH` and `CATALOG_TITLE` env vars at the top.
+The delivery toolkit is published as a GitHub Action. Catalog repositories use it directly — no need to install or build `ccc` manually.
+
+A workflow template is at [`templates/release-workflow.yml`](templates/release-workflow.yml). The core step is:
 
 ```yaml
-env:
-  CATALOG_PATH: storage/object
-  CATALOG_TITLE: Object Storage
+- name: Release and publish
+  uses: common-cloud-controls/delivery-toolkit@main
+  with:
+    type: capabilities   # capabilities | threats | controls | all
+    path: ${{ matrix.path }}
+    title: ${{ matrix.title }}
+    token: ${{ steps.app-token.outputs.token }}
 ```
+
+For repos with multiple services, use a matrix strategy with one entry per service path. For repos with a single service (such as `core-catalog`), omit the matrix. See the existing catalog repository workflows for complete examples.
 
 ---
 
