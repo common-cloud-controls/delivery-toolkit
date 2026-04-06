@@ -85,30 +85,26 @@ public/data/catalogs/<path>/<tag>-<type>.yaml   # served as a static file
 
 The commit triggers the website's Pages workflow automatically.
 
-### CI example
+### Authentication
+
+`ccc publish` writes to the website repository and requires a GitHub token with `Contents: read & write` permission on that repo. In CI this token is obtained from the `ccc-bot` GitHub App using `actions/create-github-app-token`, which exchanges the app credentials for a short-lived installation token scoped to the website repo only.
+
+The app credentials are stored as org-level Actions secrets:
+
+| Secret | Description |
+|---|---|
+| `CCC_BOT_APP_ID` | Numeric ID of the `ccc-bot` GitHub App |
+| `CCC_BOT_PRIVATE_KEY` | PEM private key generated for the app |
+
+### CI workflow
+
+A ready-to-use workflow template is at [`templates/release-workflow.yml`](templates/release-workflow.yml). Copy it to `.github/workflows/release.yml` in the catalog repo and set the `CATALOG_PATH` and `CATALOG_TITLE` env vars at the top.
 
 ```yaml
-on:
-  push:
-    tags: ['v*']
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Release artifacts
-        run: ccc release all storage/object "Object Storage"
-      - name: Publish to website
-        run: |
-          ccc publish all storage/object \
-            --tag ${{ github.ref_name }} \
-            --website-repo common-cloud-controls/website-new
-        env:
-          GITHUB_TOKEN: ${{ secrets.WEBSITE_PAT }}
+env:
+  CATALOG_PATH: storage/object
+  CATALOG_TITLE: Object Storage
 ```
-
-`WEBSITE_PAT` is a fine-grained PAT scoped to `Contents: read & write` on the website repo.
 
 ---
 

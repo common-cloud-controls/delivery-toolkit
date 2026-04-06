@@ -1,0 +1,47 @@
+# Release workflow for CCC catalog repositories.
+# Copy this file to .github/workflows/release.yml and set the env vars below.
+
+name: Release
+
+env:
+  CATALOG_PATH: ""   # e.g. storage/object
+  CATALOG_TITLE: ""  # e.g. Object Storage
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install ccc
+        run: go install github.com/finos/common-cloud-controls@latest
+
+      - name: Release artifacts
+        run: ccc release all ${{ env.CATALOG_PATH }} "${{ env.CATALOG_TITLE }}"
+
+      - name: Get website token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.CCC_BOT_APP_ID }}
+          private-key: ${{ secrets.CCC_BOT_PRIVATE_KEY }}
+          owner: common-cloud-controls
+          repositories: website-new
+
+      - name: Publish to website
+        run: |
+          ccc publish all ${{ env.CATALOG_PATH }} \
+            --tag ${{ github.ref_name }} \
+            --website-repo common-cloud-controls/website-new
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
