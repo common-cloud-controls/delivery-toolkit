@@ -1,0 +1,100 @@
+name: 'CCC'
+description: 'Generate and publish CCC catalog artifacts'
+
+inputs:
+  type:
+    description: 'Artifact type: capabilities, threats, controls, or all'
+    required: true
+  path:
+    description: 'Catalog path (e.g. storage/object)'
+    required: true
+  title:
+    description: 'Service title (required for release)'
+    required: false
+    default: ''
+  tag:
+    description: 'Release tag (defaults to the tag that triggered the workflow)'
+    required: false
+    default: ''
+  website-repo:
+    description: 'Website repository in owner/repo format'
+    required: false
+    default: 'common-cloud-controls/website-new'
+  token:
+    description: 'GitHub token with write access to the website repo'
+    required: true
+  capabilities-dir:
+    description: 'Directory containing capabilities.yaml files'
+    required: false
+    default: '.'
+  threats-dir:
+    description: 'Directory containing threats.yaml files'
+    required: false
+    default: '.'
+  controls-dir:
+    description: 'Directory containing controls.yaml files'
+    required: false
+    default: '.'
+  output-dir:
+    description: 'Output directory for generated artifacts'
+    required: false
+    default: 'artifacts'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache-dependency-path: ${{ github.action_path }}/go.sum
+
+    - name: Build ccc
+      shell: bash
+      run: go build -o "${{ github.action_path }}/ccc" "${{ github.action_path }}"
+
+    - name: Release
+      shell: bash
+      run: |
+        BIN="${{ github.action_path }}/ccc"
+        case "${{ inputs.type }}" in
+          capabilities)
+            "$BIN" release capabilities "${{ inputs.path }}" "${{ inputs.title }}" \
+              --capabilities-dir "${{ inputs.capabilities-dir }}" \
+              --output-dir "${{ inputs.output-dir }}"
+            ;;
+          threats)
+            "$BIN" release threats "${{ inputs.path }}" "${{ inputs.title }}" \
+              --threats-dir "${{ inputs.threats-dir }}" \
+              --output-dir "${{ inputs.output-dir }}"
+            ;;
+          controls)
+            "$BIN" release controls "${{ inputs.path }}" "${{ inputs.title }}" \
+              --controls-dir "${{ inputs.controls-dir }}" \
+              --output-dir "${{ inputs.output-dir }}"
+            ;;
+          all)
+            "$BIN" release all "${{ inputs.path }}" "${{ inputs.title }}" \
+              --capabilities-dir "${{ inputs.capabilities-dir }}" \
+              --threats-dir "${{ inputs.threats-dir }}" \
+              --controls-dir "${{ inputs.controls-dir }}" \
+              --output-dir "${{ inputs.output-dir }}"
+            ;;
+          *)
+            echo "Unknown type: ${{ inputs.type }}"
+            exit 1
+            ;;
+        esac
+
+    - name: Publish
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        TAG="${{ inputs.tag }}"
+        if [ -z "$TAG" ]; then
+          TAG="${GITHUB_REF_NAME}"
+        fi
+        "${{ github.action_path }}/ccc" publish "${{ inputs.type }}" "${{ inputs.path }}" \
+          --tag "$TAG" \
+          --website-repo "${{ inputs.website-repo }}" \
+          --output-dir "${{ inputs.output-dir }}"
