@@ -25,78 +25,150 @@ func init() {
 	PublishCmd.AddCommand(publishAllCmd)
 }
 
-// githubFile is the subset of the GitHub Contents API GET response we care about.
-type githubFile struct {
-	SHA string `json:"sha"`
-}
-
-// githubGetSHA returns the current blob SHA of a file in a GitHub repo, or ""
-// if the file does not exist. SHA is required by the API when updating an existing file.
-func githubGetSHA(token, repo, path string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s", repo, path)
+// githubGet performs an authenticated GET and decodes the JSON response into dst.
+func githubGet(token, url string, dst interface{}) error {
 	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return "", nil
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GET %s: %s", url, resp.Status)
-	}
-
-	var f githubFile
-	if err := json.NewDecoder(resp.Body).Decode(&f); err != nil {
-		return "", err
-	}
-	return f.SHA, nil
-}
-
-// githubPutFile creates or updates a file in a GitHub repo via the Contents API.
-// Pass sha="" when creating a new file; pass the existing SHA when updating.
-func githubPutFile(token, repo, filePath, commitMsg string, content []byte, sha string) error {
-	type putBody struct {
-		Message string `json:"message"`
-		Content string `json:"content"`
-		SHA     string `json:"sha,omitempty"`
-	}
-
-	body := putBody{
-		Message: commitMsg,
-		Content: base64.StdEncoding.EncodeToString(content),
-		SHA:     sha,
-	}
-	bodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("GET %s: %s", url, resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(dst)
+}
 
-	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s", repo, filePath)
-	req, err := http.NewRequest("PUT", url, bytes.NewReader(bodyBytes))
+// githubPost performs an authenticated POST and decodes the JSON response into dst.
+func githubPost(token, url string, body, dst interface{}) error {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("Content-Type", "application/json")
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("POST %s: %s", url, resp.Status)
+	}
+	return json.NewDecoder(resp.Body).Decode(dst)
+}
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("PUT %s: %s", url, resp.Status)
+// githubPatch performs an authenticated PATCH request.
+func githubPatch(token, url string, body interface{}) error {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PATCH", url, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("PATCH %s: %s", url, resp.Status)
+	}
+	return nil
+}
+
+// githubCreateBlob uploads content as a blob and returns its SHA.
+func githubCreateBlob(token, repo string, content []byte) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/git/blobs", repo)
+	var result struct {
+		SHA string `json:"sha"`
+	}
+	err := githubPost(token, url, map[string]string{
+		"content":  base64.StdEncoding.EncodeToString(content),
+		"encoding": "base64",
+	}, &result)
+	return result.SHA, err
+}
+
+// githubCommitFiles creates a single commit on the default branch containing all provided files.
+func githubCommitFiles(token, repo, message string, files map[string][]byte) error {
+	base := fmt.Sprintf("https://api.github.com/repos/%s/git", repo)
+
+	// Get current HEAD commit SHA.
+	var ref struct {
+		Object struct{ SHA string `json:"sha"` } `json:"object"`
+	}
+	if err := githubGet(token, base+"/refs/heads/main", &ref); err != nil {
+		return fmt.Errorf("getting ref: %w", err)
+	}
+
+	// Get the tree SHA from that commit.
+	var commit struct {
+		Tree struct{ SHA string `json:"sha"` } `json:"tree"`
+	}
+	if err := githubGet(token, base+"/commits/"+ref.Object.SHA, &commit); err != nil {
+		return fmt.Errorf("getting commit: %w", err)
+	}
+
+	// Create a blob for each file.
+	type treeEntry struct {
+		Path string `json:"path"`
+		Mode string `json:"mode"`
+		Type string `json:"type"`
+		SHA  string `json:"sha"`
+	}
+	entries := make([]treeEntry, 0, len(files))
+	for path, content := range files {
+		blobSHA, err := githubCreateBlob(token, repo, content)
+		if err != nil {
+			return fmt.Errorf("creating blob for %s: %w", path, err)
+		}
+		entries = append(entries, treeEntry{Path: path, Mode: "100644", Type: "blob", SHA: blobSHA})
+	}
+
+	// Create a new tree on top of the current one.
+	var tree struct {
+		SHA string `json:"sha"`
+	}
+	if err := githubPost(token, base+"/trees", map[string]interface{}{
+		"base_tree": commit.Tree.SHA,
+		"tree":      entries,
+	}, &tree); err != nil {
+		return fmt.Errorf("creating tree: %w", err)
+	}
+
+	// Create the commit.
+	var newCommit struct {
+		SHA string `json:"sha"`
+	}
+	if err := githubPost(token, base+"/commits", map[string]interface{}{
+		"message": message,
+		"tree":    tree.SHA,
+		"parents": []string{ref.Object.SHA},
+	}, &newCommit); err != nil {
+		return fmt.Errorf("creating commit: %w", err)
+	}
+
+	// Advance the branch ref.
+	if err := githubPatch(token, base+"/refs/heads/main", map[string]string{
+		"sha": newCommit.SHA,
+	}); err != nil {
+		return fmt.Errorf("updating ref: %w", err)
 	}
 	return nil
 }
@@ -119,7 +191,7 @@ func withFrontmatter(md, title, pagePath string) []byte {
 }
 
 // publishArtifact commits a single catalog type's markdown and YAML artifacts
-// to the website repository under the versioned paths.
+// to the website repository in a single commit.
 func publishArtifact(token, websiteRepo, catalogPath, tag, artifactType string, mdContent, yamlContent []byte) error {
 	mdDest := fmt.Sprintf("src/content/catalogs/%s/%s/%s.md", catalogPath, artifactType, tag)
 	yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, artifactType, tag)
@@ -129,26 +201,13 @@ func publishArtifact(token, websiteRepo, catalogPath, tag, artifactType string, 
 	pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, artifactType, tag)
 	mdWithFM := withFrontmatter(string(mdContent), title, pagePath)
 
-	// Publish markdown
-	mdSHA, err := githubGetSHA(token, websiteRepo, mdDest)
-	if err != nil {
-		return fmt.Errorf("checking %s: %w", mdDest, err)
+	if err := githubCommitFiles(token, websiteRepo, commitMsg, map[string][]byte{
+		mdDest:   mdWithFM,
+		yamlDest: yamlContent,
+	}); err != nil {
+		return err
 	}
-	if err := githubPutFile(token, websiteRepo, mdDest, commitMsg, mdWithFM, mdSHA); err != nil {
-		return fmt.Errorf("publishing %s: %w", mdDest, err)
-	}
-	fmt.Printf("Published %s\n", mdDest)
-
-	// Publish YAML
-	yamlSHA, err := githubGetSHA(token, websiteRepo, yamlDest)
-	if err != nil {
-		return fmt.Errorf("checking %s: %w", yamlDest, err)
-	}
-	if err := githubPutFile(token, websiteRepo, yamlDest, commitMsg, yamlContent, yamlSHA); err != nil {
-		return fmt.Errorf("publishing %s: %w", yamlDest, err)
-	}
-	fmt.Printf("Published %s\n", yamlDest)
-
+	fmt.Printf("Published %s and %s\n", mdDest, yamlDest)
 	return nil
 }
 
