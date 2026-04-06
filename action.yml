@@ -50,7 +50,8 @@ runs:
 
     - name: Build ccc
       shell: bash
-      run: go build -o "${{ github.action_path }}/ccc" "${{ github.action_path }}"
+      working-directory: ${{ github.action_path }}
+      run: go build -o "${{ github.action_path }}/ccc" .
 
     - name: Release
       shell: bash
