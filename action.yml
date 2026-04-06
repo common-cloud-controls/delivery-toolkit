@@ -19,7 +19,7 @@ inputs:
   website-repo:
     description: 'Website repository in owner/repo format'
     required: false
-    default: 'common-cloud-controls/website-new'
+    default: 'common-cloud-controls/common-cloud-controls.github.io'
   token:
     description: 'GitHub token with write access to the website repo'
     required: true
