@@ -1,40 +1,28 @@
 # Contributing to the CCC Delivery Toolkit
 
-The delivery toolkit is the `ccc` CLI — a Go binary that generates, releases, and publishes CCC catalog artifacts. This guide covers how to work on the toolkit and how the release pipeline works end to end.
+The delivery toolkit is the `ccc` CLI — a Go binary that generates, releases, and publishes CCC catalog artifacts.
 
 ---
 
 ## Development
 
-### Prerequisites
-
-- Go 1.21+
-- Access to the `common-cloud-controls` GitHub org
-
-### Build
+**Prerequisites:** Go 1.21+, access to the `common-cloud-controls` GitHub org.
 
 ```sh
 go build -o ccc .
 ```
 
-### Run locally
+### Running locally
 
 ```sh
-# Generate artifacts from a local catalog repo
-./ccc generate capabilities storage/object "Object Storage" \
-  --capabilities-dir ../capability-catalogs \
-  --output-dir ./out
-
-# Generate all types for a service
+# Generate from a local catalog repo
 ./ccc generate capabilities storage/object "Object Storage" --capabilities-dir ../capability-catalogs
-./ccc generate threats storage/object "Object Storage" --threats-dir ../threat-catalogs
-./ccc generate controls storage/object "Object Storage" --controls-dir ../control-catalogs
 
-# Fetch directly from GitHub (omit the --*-dir flag)
+# Fetch from GitHub (omit --*-dir)
 ./ccc generate capabilities storage/object "Object Storage"
 ```
 
-The core catalog uses the special path `core/ccc`:
+The core catalog uses the reserved path `core/ccc`:
 
 ```sh
 ./ccc generate all core/ccc "Core"
@@ -42,92 +30,75 @@ The core catalog uses the special path `core/ccc`:
 
 ---
 
-## Command Reference
+## Commands
+
+```
+ccc (generate|release|publish) (capabilities|threats|controls|all) <path> [<title>]
+```
 
 | Command | Description |
 |---|---|
-| `ccc generate <type> <path> <title>` | Generate artifacts without publishing |
-| `ccc release <type> <path> <title>` | Generate artifacts for release (identical to generate for now; exists as a distinct CI step) |
-| `ccc release all <path> <title>` | Release capabilities, threats, and controls in sequence |
-| `ccc publish <type> <path>` | Publish a single artifact type to the website repository |
-| `ccc publish all <path>` | Publish all artifact types to the website repository |
+| `generate` | Build artifacts locally — no publishing |
+| `release` | Same as generate; exists as a distinct CI step so the pipeline fails before publish if artifacts can't be built |
+| `publish` | Commit built artifacts to the website repository |
 
-`<type>` is one of: `capabilities`, `threats`, `controls`, `all`
+**Arguments**
 
-`<path>` is the catalog path within the relevant repo (e.g. `storage/object`, `key-management/kms`, `core/ccc`)
+- `<path>` — catalog path within the source repo, e.g. `storage/object`, `core/ccc`
+- `<title>` — human-readable service name, e.g. `"Object Storage"` (required by `generate` and `release`, not by `publish`)
+
+**Common flags**
+
+| Flag | Commands | Description |
+|---|---|---|
+| `--output-dir` | all | Artifact directory (default: `artifacts`) |
+| `--capabilities-dir` | `generate`, `release` | Local capability-catalogs root |
+| `--threats-dir` | `generate`, `release` | Local threat-catalogs root |
+| `--controls-dir` | `generate`, `release` | Local control-catalogs root |
+| `--tag` | `publish` | Release tag, e.g. `v1.0.0` (required) |
+| `--website-repo` | `publish` | Target repo in `owner/repo` format (required) |
+| `--token` | `publish` | GitHub token; falls back to `$GITHUB_TOKEN` |
 
 ---
 
-## How Releases Work
+## Release Pipeline
 
-Catalog releases flow through two sequential steps: **release** and **publish**. Keeping them separate means CI fails fast with a clear signal before any changes reach the website.
+Releases run in two sequential steps. If `release` fails, `publish` never runs.
 
-### Step 1 — `ccc release`
+### 1. `ccc release`
 
-Reads a catalog YAML from the relevant source repo (or from GitHub if no local path is given), injects standard CCC metadata, and writes two artifacts per type to `--output-dir`:
+Reads a catalog YAML, injects CCC metadata, and writes to `--output-dir`:
 
-- `<path>/capabilities.yaml` — the populated YAML artifact
-- `<path>/capabilities.md` — a rendered Markdown table
-
-This step must succeed before anything is published. If the source YAML is malformed, incomplete, or fails to render, the pipeline stops here.
-
-### Step 2 — `ccc publish`
-
-Reads the artifacts written by `ccc release` and commits them to the [website repository](https://github.com/common-cloud-controls/website-new) via the GitHub Contents API.
-
-Each artifact type produces two files in the website repo:
-
-| Artifact | Website path | Purpose |
-|---|---|---|
-| `capabilities.md` (with frontmatter) | `src/content/catalogs/<path>/<tag>-capabilities.md` | Rendered page at `/catalogs/<path>/<tag>-capabilities` |
-| `capabilities.yaml` | `public/data/catalogs/<path>/<tag>-capabilities.yaml` | Raw data file served as a static URL |
-
-The same pattern applies for `threats` and `controls`.
-
-The commit to the website repo triggers its GitHub Actions Pages workflow automatically, deploying the new pages within minutes.
-
-### Authentication
-
-`ccc publish` requires a GitHub token with write access to the website repository. Pass it via flag or environment variable:
-
-```sh
-# Via flag
-./ccc publish all storage/object --tag v1.0.0 --website-repo common-cloud-controls/website-new --token ghp_...
-
-# Via environment variable (preferred in CI)
-export GITHUB_TOKEN=ghp_...
-./ccc publish all storage/object --tag v1.0.0 --website-repo common-cloud-controls/website-new
+```
+<path>/capabilities.yaml   # populated YAML artifact
+<path>/capabilities.md     # rendered Markdown table
 ```
 
----
+### 2. `ccc publish`
 
-## CI Workflow
+Commits the built artifacts to the website repo via the GitHub Contents API. Each type produces two files:
 
-Each catalog repository (capability-catalogs, threat-catalogs, control-catalogs, core-catalog) should have a release workflow that runs on tag push. A minimal example:
+```
+src/content/catalogs/<path>/<tag>-<type>.md     # becomes a rendered page
+public/data/catalogs/<path>/<tag>-<type>.yaml   # served as a static file
+```
+
+The commit triggers the website's Pages workflow automatically.
+
+### CI example
 
 ```yaml
-name: Release
-
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install ccc
-        run: |
-          go install github.com/finos/common-cloud-controls@latest
-          # or: download a pre-built binary from the delivery-toolkit releases
-
       - name: Release artifacts
-        run: |
-          ccc release all storage/object "Object Storage"
-
+        run: ccc release all storage/object "Object Storage"
       - name: Publish to website
         run: |
           ccc publish all storage/object \
@@ -137,18 +108,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.WEBSITE_PAT }}
 ```
 
-`WEBSITE_PAT` is a fine-grained personal access token (or GitHub App token) stored as a secret in the catalog repo, scoped to `Contents: read & write` on the website repository.
+`WEBSITE_PAT` is a fine-grained PAT scoped to `Contents: read & write` on the website repo.
 
 ---
 
-## Where Artifacts End Up
+## Published URLs
 
-After a successful publish, artifacts are available at:
+```
+# Rendered page
+https://common-cloud-controls.github.io/catalogs/<path>/<tag>-<type>
 
-- **Rendered page:** `https://common-cloud-controls.github.io/catalogs/<path>/<tag>-<type>`
-  e.g. `https://common-cloud-controls.github.io/catalogs/storage/object/v1.0.0-controls`
-
-- **Raw YAML:** `https://common-cloud-controls.github.io/data/catalogs/<path>/<tag>-<type>.yaml`
-  e.g. `https://common-cloud-controls.github.io/data/catalogs/storage/object/v1.0.0-controls.yaml`
-
-The raw YAML URLs are stable and can be referenced by downstream tooling, compliance pipelines, or other automation.
+# Raw YAML (stable, safe to reference from tooling)
+https://common-cloud-controls.github.io/data/catalogs/<path>/<tag>-<type>.yaml
+```
