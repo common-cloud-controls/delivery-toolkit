@@ -121,12 +121,12 @@ func withFrontmatter(md, title, pagePath string) []byte {
 // publishArtifact commits a single catalog type's markdown and YAML artifacts
 // to the website repository under the versioned paths.
 func publishArtifact(token, websiteRepo, catalogPath, tag, artifactType string, mdContent, yamlContent []byte) error {
-	mdDest := fmt.Sprintf("src/content/catalogs/%s/%s-%s.md", catalogPath, tag, artifactType)
-	yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s-%s.yaml", catalogPath, tag, artifactType)
-	commitMsg := fmt.Sprintf("release: %s@%s %s", catalogPath, tag, artifactType)
+	mdDest := fmt.Sprintf("src/content/catalogs/%s/%s/%s.md", catalogPath, artifactType, tag)
+	yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, artifactType, tag)
+	commitMsg := fmt.Sprintf("release: %s %s@%s", catalogPath, artifactType, tag)
 
 	title := extractTitle(string(mdContent))
-	pagePath := fmt.Sprintf("/catalogs/%s/%s-%s", catalogPath, tag, artifactType)
+	pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, artifactType, tag)
 	mdWithFM := withFrontmatter(string(mdContent), title, pagePath)
 
 	// Publish markdown
