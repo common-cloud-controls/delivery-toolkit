@@ -70,11 +70,12 @@ func init() {
 }
 
 func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
-	catalogPath := args[0]
-	catalogTitle := "CCC " + args[1] + " Capabilities"
 	capabilitiesDir, _ := cmd.Flags().GetString("capabilities-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
+	return doGenerateCapabilities(args[0], "CCC "+args[1]+" Capabilities", args[1], capabilitiesDir, outputDir)
+}
 
+func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitiesDir, outputDir string) error {
 	// Load capabilities.yaml — from disk or GitHub
 	var data []byte
 	if capabilitiesDir != "" {
@@ -107,7 +108,7 @@ func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 		Id:            inferCatalogID(catalog.Capabilities),
 		Type:          gemara.ControlCatalogArtifact,
 		GemaraVersion: "v0",
-		Description:   "Capabilities for " + args[1] + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Description:   "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",

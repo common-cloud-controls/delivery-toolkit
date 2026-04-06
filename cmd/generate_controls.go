@@ -33,11 +33,12 @@ func init() {
 }
 
 func runGenerateControls(cmd *cobra.Command, args []string) error {
-	catalogPath := args[0]
-	catalogTitle := "CCC " + args[1] + " Controls"
 	controlsDir, _ := cmd.Flags().GetString("controls-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
+	return doGenerateControls(args[0], "CCC "+args[1]+" Controls", args[1], controlsDir, outputDir)
+}
 
+func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, outputDir string) error {
 	// Load controls.yaml — from disk or GitHub
 	var data []byte
 	if controlsDir != "" {
@@ -69,7 +70,7 @@ func runGenerateControls(cmd *cobra.Command, args []string) error {
 		Id:            inferControlCatalogID(catalog.Controls),
 		Type:          gemara.ControlCatalogArtifact,
 		GemaraVersion: "v0",
-		Description:   "Controls for " + args[1] + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Description:   "Controls for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
