@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	gemara "github.com/gemaraproj/go-gemara"
+	"github.com/gemaraproj/go-gemara/gemaraconv"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -93,12 +94,12 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 		return fmt.Errorf("writing controls.yaml: %w", err)
 	}
 
-	// Write Markdown
-	md, err := renderControlsMarkdown(&catalog)
+	// Write Markdown using the SDK's built-in renderer
+	md, err := gemaraconv.ControlCatalog(&catalog).ToMarkdown()
 	if err != nil {
 		return fmt.Errorf("rendering Markdown: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(outDir, "controls.md"), []byte(md), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(outDir, "controls.md"), md, 0644); err != nil {
 		return fmt.Errorf("writing controls.md: %w", err)
 	}
 

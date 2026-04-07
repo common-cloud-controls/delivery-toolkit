@@ -54,25 +54,6 @@ var threatsTemplate = template.Must(template.New("threats").Funcs(inlineFuncs).P
 {{ end }}
 {{- end }}`))
 
-var controlsTemplate = template.Must(template.New("controls").Funcs(inlineFuncs).Parse(`# {{ .Title }}
-
-| ID | Title | Objective |
-|---|---|---|
-{{- range .Controls }}
-| {{ .Id }} | {{ .Title }} | {{ inline .Objective }} |
-{{- end }}
-{{ if .Imports }}
-## Imported Controls
-{{ range .Imports }}
-### From {{ .ReferenceId }}
-
-| ID | Description |
-|---|---|
-{{- range .Entries }}
-| {{ .ReferenceId }} | {{ .Remarks }} |
-{{- end }}
-{{ end }}
-{{- end }}`))
 
 func renderMarkdown(catalog *gemara.CapabilityCatalog) (string, error) {
 	var buf bytes.Buffer
@@ -90,10 +71,3 @@ func renderThreatsMarkdown(catalog *gemara.ThreatCatalog) (string, error) {
 	return buf.String(), nil
 }
 
-func renderControlsMarkdown(catalog *gemara.ControlCatalog) (string, error) {
-	var buf bytes.Buffer
-	if err := controlsTemplate.Execute(&buf, catalog); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
-}
