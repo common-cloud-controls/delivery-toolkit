@@ -29,7 +29,10 @@ inputs:
     description: 'Output directory for generated artifacts'
     required: false
     default: 'artifacts'
-
+  binary:
+    description: 'Path to a pre-built ccc binary (skips build step)'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -76,14 +79,30 @@ runs:
         owner: common-cloud-controls
         repositories: common-cloud-controls.github.io
 
-    - name: Compute binary cache key
+    - name: Check for pre-built binary
       if: steps.changes.outputs.changed == 'true'
+      id: prebuilt
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.binary }}" ] && [ -x "${{ inputs.binary }}" ]; then
+          echo "found=true" >> $GITHUB_OUTPUT
+          echo "path=${{ inputs.binary }}" >> $GITHUB_OUTPUT
+        elif [ -x "${{ github.action_path }}/ccc" ]; then
+          echo "found=true" >> $GITHUB_OUTPUT
+          echo "path=${{ github.action_path }}/ccc" >> $GITHUB_OUTPUT
+        else
+          echo "found=false" >> $GITHUB_OUTPUT
+          echo "path=${{ github.action_path }}/ccc" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Compute binary cache key
+      if: steps.changes.outputs.changed == 'true' && steps.prebuilt.outputs.found != 'true'
       id: cache-key
       shell: bash
       run: echo "value=${{ runner.os }}-$(sha256sum '${{ github.action_path }}/go.sum' | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
     - name: Restore cached ccc binary
-      if: steps.changes.outputs.changed == 'true'
+      if: steps.changes.outputs.changed == 'true' && steps.prebuilt.outputs.found != 'true'
       id: binary-cache
       uses: actions/cache@v4
       with:
@@ -91,13 +110,13 @@ runs:
         key: ccc-${{ steps.cache-key.outputs.value }}
 
     - uses: actions/setup-go@v6
-      if: steps.changes.outputs.changed == 'true' && steps.binary-cache.outputs.cache-hit != 'true'
+      if: steps.changes.outputs.changed == 'true' && steps.prebuilt.outputs.found != 'true' && steps.binary-cache.outputs.cache-hit != 'true'
       with:
         go-version-file: ${{ github.action_path }}/go.mod
         cache-dependency-path: ${{ github.action_path }}/go.sum
 
     - name: Build ccc
-      if: steps.changes.outputs.changed == 'true' && steps.binary-cache.outputs.cache-hit != 'true'
+      if: steps.changes.outputs.changed == 'true' && steps.prebuilt.outputs.found != 'true' && steps.binary-cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ github.action_path }}
       run: go build -o "${{ github.action_path }}/ccc" .
@@ -106,7 +125,7 @@ runs:
       if: steps.changes.outputs.changed == 'true'
       shell: bash
       run: |
-        BIN="${{ github.action_path }}/ccc"
+        BIN="${{ steps.prebuilt.outputs.path }}"
         case "${{ inputs.type }}" in
           capabilities)
             "$BIN" release capabilities "${{ inputs.path }}" "${{ inputs.title }}" \
@@ -144,7 +163,7 @@ runs:
         if [ -z "$TAG" ]; then
           TAG="${GITHUB_REF_NAME}"
         fi
-        "${{ github.action_path }}/ccc" publish "${{ inputs.type }}" "${{ inputs.path }}" \
+        "${{ steps.prebuilt.outputs.path }}" publish "${{ inputs.type }}" "${{ inputs.path }}" \
           --token "${{ steps.app-token.outputs.token }}" \
           --tag "$TAG" \
           --website-repo "${{ inputs.website-repo }}" \
