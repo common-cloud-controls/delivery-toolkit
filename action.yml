@@ -9,75 +9,125 @@ inputs:
     description: 'Catalog path (e.g. storage/object)'
     required: true
   title:
-    description: 'Service title (required for release)'
-    required: false
-    default: ''
+    description: 'Service title (e.g. "Object Storage")'
+    required: true
   tag:
     description: 'Release tag (defaults to the tag that triggered the workflow)'
     required: false
     default: ''
+  app-id:
+    description: 'GitHub App ID for creating a bot token with write access to the website repo'
+    required: true
+  private-key:
+    description: 'GitHub App private key'
+    required: true
   website-repo:
     description: 'Website repository in owner/repo format'
     required: false
     default: 'common-cloud-controls/common-cloud-controls.github.io'
-  token:
-    description: 'GitHub token with write access to the website repo'
-    required: true
-  capabilities-dir:
-    description: 'Directory containing capabilities.yaml files'
-    required: false
-    default: '.'
-  threats-dir:
-    description: 'Directory containing threats.yaml files'
-    required: false
-    default: '.'
-  controls-dir:
-    description: 'Directory containing controls.yaml files'
-    required: false
-    default: '.'
   output-dir:
     description: 'Output directory for generated artifacts'
     required: false
     default: 'artifacts'
 
+
 runs:
   using: composite
   steps:
+    - name: Check for changes since last release
+      id: changes
+      shell: bash
+      run: |
+        CHANGED=false
+
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "Manual trigger — including ${{ inputs.path }}"
+          CHANGED=true
+        else
+          PREV_TAG=$(git describe --abbrev=0 --tags HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag — including ${{ inputs.path }} in first release"
+            CHANGED=true
+          elif git log "${PREV_TAG}..HEAD" --oneline -- "${{ inputs.path }}" | grep -q .; then
+            echo "Changes detected in ${{ inputs.path }} since ${PREV_TAG}"
+            CHANGED=true
+          else
+            # Option C: publish if no artifact has ever been published for this path/type
+            HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
+              "https://api.github.com/repos/${{ inputs.website-repo }}/contents/src/content/catalogs/${{ inputs.type }}/${{ inputs.path }}")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "No changes in ${{ inputs.path }} since ${PREV_TAG} — skipping"
+            else
+              echo "No published artifact for ${{ inputs.type }}/${{ inputs.path }} — including in release"
+              CHANGED=true
+            fi
+          fi
+        fi
+
+        echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+
+    - name: Get app token
+      if: steps.changes.outputs.changed == 'true'
+      id: app-token
+      uses: actions/create-github-app-token@v3
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: common-cloud-controls
+        repositories: common-cloud-controls.github.io
+
+    - name: Compute binary cache key
+      if: steps.changes.outputs.changed == 'true'
+      id: cache-key
+      shell: bash
+      run: echo "value=${{ runner.os }}-$(sha256sum '${{ github.action_path }}/go.sum' | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+    - name: Restore cached ccc binary
+      if: steps.changes.outputs.changed == 'true'
+      id: binary-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.action_path }}/ccc
+        key: ccc-${{ steps.cache-key.outputs.value }}
+
     - uses: actions/setup-go@v6
+      if: steps.changes.outputs.changed == 'true' && steps.binary-cache.outputs.cache-hit != 'true'
       with:
         go-version-file: ${{ github.action_path }}/go.mod
         cache-dependency-path: ${{ github.action_path }}/go.sum
 
     - name: Build ccc
+      if: steps.changes.outputs.changed == 'true' && steps.binary-cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ github.action_path }}
       run: go build -o "${{ github.action_path }}/ccc" .
 
     - name: Release
+      if: steps.changes.outputs.changed == 'true'
       shell: bash
       run: |
         BIN="${{ github.action_path }}/ccc"
         case "${{ inputs.type }}" in
           capabilities)
             "$BIN" release capabilities "${{ inputs.path }}" "${{ inputs.title }}" \
-              --capabilities-dir "${{ inputs.capabilities-dir }}" \
+              --capabilities-dir "." \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           threats)
             "$BIN" release threats "${{ inputs.path }}" "${{ inputs.title }}" \
-              --threats-dir "${{ inputs.threats-dir }}" \
+              --threats-dir "." \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           controls)
             "$BIN" release controls "${{ inputs.path }}" "${{ inputs.title }}" \
-              --controls-dir "${{ inputs.controls-dir }}" \
+              --controls-dir "." \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           all)
             "$BIN" release all "${{ inputs.path }}" "${{ inputs.title }}" \
-              --capabilities-dir "${{ inputs.capabilities-dir }}" \
-              --threats-dir "${{ inputs.threats-dir }}" \
-              --controls-dir "${{ inputs.controls-dir }}" \
+              --capabilities-dir "." \
+              --threats-dir "." \
+              --controls-dir "." \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           *)
@@ -87,15 +137,15 @@ runs:
         esac
 
     - name: Publish
+      if: steps.changes.outputs.changed == 'true'
       shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.token }}
       run: |
         TAG="${{ inputs.tag }}"
         if [ -z "$TAG" ]; then
           TAG="${GITHUB_REF_NAME}"
         fi
         "${{ github.action_path }}/ccc" publish "${{ inputs.type }}" "${{ inputs.path }}" \
+          --token "${{ steps.app-token.outputs.token }}" \
           --tag "$TAG" \
           --website-repo "${{ inputs.website-repo }}" \
           --output-dir "${{ inputs.output-dir }}"
