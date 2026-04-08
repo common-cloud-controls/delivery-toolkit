@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 )
 
@@ -30,11 +34,36 @@ func runPublishAll(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := doPublishCapabilities(catalogPath, tag, websiteRepo, token, outputDir); err != nil {
+	base := filepath.Join(outputDir, catalogPath)
+	files := make(map[string][]byte)
+
+	types := []string{"capabilities", "threats", "controls"}
+	for _, t := range types {
+		mdContent, err := os.ReadFile(filepath.Join(base, t+".md"))
+		if err != nil {
+			return fmt.Errorf("reading %s.md: %w", t, err)
+		}
+		yamlContent, err := os.ReadFile(filepath.Join(base, t+".yaml"))
+		if err != nil {
+			return fmt.Errorf("reading %s.yaml: %w", t, err)
+		}
+
+		title := extractTitle(string(mdContent))
+		pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, t, tag)
+		mdDest := fmt.Sprintf("src/content/catalogs/%s/%s/%s.md", catalogPath, t, tag)
+		yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, t, tag)
+
+		files[mdDest] = withFrontmatter(string(mdContent), title, pagePath)
+		files[yamlDest] = yamlContent
+	}
+
+	commitMsg := fmt.Sprintf("release: %s all@%s", catalogPath, tag)
+	if err := githubCommitFiles(token, websiteRepo, commitMsg, files); err != nil {
 		return err
 	}
-	if err := doPublishThreats(catalogPath, tag, websiteRepo, token, outputDir); err != nil {
-		return err
+
+	for path := range files {
+		fmt.Printf("Published %s\n", path)
 	}
-	return doPublishControls(catalogPath, tag, websiteRepo, token, outputDir)
+	return nil
 }

@@ -74,7 +74,8 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 	catalog.Metadata = gemara.Metadata{
 		Id:            inferThreatCatalogID(catalog.Threats),
 		Type:          gemara.ThreatCatalogArtifact,
-		GemaraVersion: tag,
+		GemaraVersion: gemara.SchemaVersion,
+		Version:       tag,
 		Description:   "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",

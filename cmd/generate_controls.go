@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -72,7 +73,8 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 	catalog.Metadata = gemara.Metadata{
 		Id:            inferControlCatalogID(catalog.Controls),
 		Type:          gemara.ControlCatalogArtifact,
-		GemaraVersion: tag,
+		GemaraVersion: gemara.SchemaVersion,
+		Version:       tag,
 		Description:   "Controls for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
@@ -97,7 +99,7 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 	}
 
 	// Write Markdown using the SDK's built-in renderer
-	md, err := gemaraconv.ControlCatalog(&catalog).ToMarkdown()
+	md, err := gemaraconv.ControlCatalog(&catalog).ToMarkdown(context.Background())
 	if err != nil {
 		return fmt.Errorf("rendering Markdown: %w", err)
 	}
