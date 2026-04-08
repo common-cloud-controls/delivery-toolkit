@@ -57,7 +57,7 @@ runs:
           else
             # Option C: publish if no artifact has ever been published for this path/type
             HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" \
-              "https://api.github.com/repos/${{ inputs.website-repo }}/contents/src/content/catalogs/${{ inputs.type }}/${{ inputs.path }}")
+              "https://api.github.com/repos/${{ inputs.website-repo }}/contents/src/content/catalogs/${{ inputs.path }}/${{ inputs.type }}")
             if [ "$HTTP_CODE" = "200" ]; then
               echo "No changes in ${{ inputs.path }} since ${PREV_TAG} — skipping"
             else
