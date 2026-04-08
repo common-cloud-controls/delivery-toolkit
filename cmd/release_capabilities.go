@@ -13,4 +13,5 @@ var releaseCapabilitiesCmd = &cobra.Command{
 func init() {
 	releaseCapabilitiesCmd.Flags().String("capabilities-dir", "", "Root of the capability-catalogs repo (omit to fetch from GitHub)")
 	releaseCapabilitiesCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	releaseCapabilitiesCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }

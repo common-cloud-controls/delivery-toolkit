@@ -126,20 +126,27 @@ runs:
       shell: bash
       run: |
         BIN="${{ steps.prebuilt.outputs.path }}"
+        TAG="${{ inputs.tag }}"
+        if [ -z "$TAG" ]; then
+          TAG="${GITHUB_REF_NAME}"
+        fi
         case "${{ inputs.type }}" in
           capabilities)
             "$BIN" release capabilities "${{ inputs.path }}" "${{ inputs.title }}" \
               --capabilities-dir "." \
+              --tag "$TAG" \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           threats)
             "$BIN" release threats "${{ inputs.path }}" "${{ inputs.title }}" \
               --threats-dir "." \
+              --tag "$TAG" \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           controls)
             "$BIN" release controls "${{ inputs.path }}" "${{ inputs.title }}" \
               --controls-dir "." \
+              --tag "$TAG" \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           all)
@@ -147,6 +154,7 @@ runs:
               --capabilities-dir "." \
               --threats-dir "." \
               --controls-dir "." \
+              --tag "$TAG" \
               --output-dir "${{ inputs.output-dir }}"
             ;;
           *)

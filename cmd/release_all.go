@@ -16,6 +16,7 @@ func init() {
 	releaseAllCmd.Flags().String("threats-dir", "", "Root of the threat-catalogs repo (omit to fetch from GitHub)")
 	releaseAllCmd.Flags().String("controls-dir", "", "Root of the control-catalogs repo (omit to fetch from GitHub)")
 	releaseAllCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	releaseAllCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }
 
 func runReleaseAll(cmd *cobra.Command, args []string) error {
@@ -25,12 +26,13 @@ func runReleaseAll(cmd *cobra.Command, args []string) error {
 	threatsDir, _ := cmd.Flags().GetString("threats-dir")
 	controlsDir, _ := cmd.Flags().GetString("controls-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
+	tag, _ := cmd.Flags().GetString("tag")
 
-	if err := doGenerateCapabilities(catalogPath, "CCC "+serviceTitle+" Capabilities", serviceTitle, capabilitiesDir, outputDir); err != nil {
+	if err := doGenerateCapabilities(catalogPath, "CCC "+serviceTitle+" Capabilities", serviceTitle, capabilitiesDir, outputDir, tag); err != nil {
 		return err
 	}
-	if err := doGenerateThreats(catalogPath, "CCC "+serviceTitle+" Threats", serviceTitle, threatsDir, outputDir); err != nil {
+	if err := doGenerateThreats(catalogPath, "CCC "+serviceTitle+" Threats", serviceTitle, threatsDir, outputDir, tag); err != nil {
 		return err
 	}
-	return doGenerateControls(catalogPath, "CCC "+serviceTitle+" Controls", serviceTitle, controlsDir, outputDir)
+	return doGenerateControls(catalogPath, "CCC "+serviceTitle+" Controls", serviceTitle, controlsDir, outputDir, tag)
 }

@@ -67,15 +67,17 @@ For core/ccc:   ` + githubRawCoreBase + `/capabilities.yaml`,
 func init() {
 	generateCapabilitiesCmd.Flags().String("capabilities-dir", "", "Root of the capability-catalogs repo (omit to fetch from GitHub)")
 	generateCapabilitiesCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	generateCapabilitiesCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }
 
 func runGenerateCapabilities(cmd *cobra.Command, args []string) error {
 	capabilitiesDir, _ := cmd.Flags().GetString("capabilities-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
-	return doGenerateCapabilities(args[0], "CCC "+args[1]+" Capabilities", args[1], capabilitiesDir, outputDir)
+	tag, _ := cmd.Flags().GetString("tag")
+	return doGenerateCapabilities(args[0], "CCC "+args[1]+" Capabilities", args[1], capabilitiesDir, outputDir, tag)
 }
 
-func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitiesDir, outputDir string) error {
+func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitiesDir, outputDir, tag string) error {
 	// Load capabilities.yaml — from disk or GitHub
 	var data []byte
 	if capabilitiesDir != "" {
@@ -107,7 +109,7 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 	catalog.Metadata = gemara.Metadata{
 		Id:            inferCatalogID(catalog.Capabilities),
 		Type:          gemara.ControlCatalogArtifact,
-		GemaraVersion: "v0",
+		GemaraVersion: tag,
 		Description:   "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",

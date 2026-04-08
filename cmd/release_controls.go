@@ -13,4 +13,5 @@ var releaseControlsCmd = &cobra.Command{
 func init() {
 	releaseControlsCmd.Flags().String("controls-dir", "", "Root of the control-catalogs repo (omit to fetch from GitHub)")
 	releaseControlsCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	releaseControlsCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }

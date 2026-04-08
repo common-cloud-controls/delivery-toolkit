@@ -33,15 +33,17 @@ imported threats to be parsed. See the threat-catalogs migration.`,
 func init() {
 	generateThreatsCmd.Flags().String("threats-dir", "", "Root of the threat-catalogs repo (omit to fetch from GitHub)")
 	generateThreatsCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	generateThreatsCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }
 
 func runGenerateThreats(cmd *cobra.Command, args []string) error {
 	threatsDir, _ := cmd.Flags().GetString("threats-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
-	return doGenerateThreats(args[0], "CCC "+args[1]+" Threats", args[1], threatsDir, outputDir)
+	tag, _ := cmd.Flags().GetString("tag")
+	return doGenerateThreats(args[0], "CCC "+args[1]+" Threats", args[1], threatsDir, outputDir, tag)
 }
 
-func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outputDir string) error {
+func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outputDir, tag string) error {
 	// Load threats.yaml — from disk or GitHub
 	var data []byte
 	if threatsDir != "" {
@@ -72,7 +74,7 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 	catalog.Metadata = gemara.Metadata{
 		Id:            inferThreatCatalogID(catalog.Threats),
 		Type:          gemara.ThreatCatalogArtifact,
-		GemaraVersion: "v0",
+		GemaraVersion: tag,
 		Description:   "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",

@@ -31,15 +31,17 @@ For core/ccc:   ` + githubRawCoreBase + `/controls.yaml`,
 func init() {
 	generateControlsCmd.Flags().String("controls-dir", "", "Root of the control-catalogs repo (omit to fetch from GitHub)")
 	generateControlsCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	generateControlsCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }
 
 func runGenerateControls(cmd *cobra.Command, args []string) error {
 	controlsDir, _ := cmd.Flags().GetString("controls-dir")
 	outputDir, _ := cmd.Flags().GetString("output-dir")
-	return doGenerateControls(args[0], "CCC "+args[1]+" Controls", args[1], controlsDir, outputDir)
+	tag, _ := cmd.Flags().GetString("tag")
+	return doGenerateControls(args[0], "CCC "+args[1]+" Controls", args[1], controlsDir, outputDir, tag)
 }
 
-func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, outputDir string) error {
+func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, outputDir, tag string) error {
 	// Load controls.yaml — from disk or GitHub
 	var data []byte
 	if controlsDir != "" {
@@ -70,7 +72,7 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 	catalog.Metadata = gemara.Metadata{
 		Id:            inferControlCatalogID(catalog.Controls),
 		Type:          gemara.ControlCatalogArtifact,
-		GemaraVersion: "v0",
+		GemaraVersion: tag,
 		Description:   "Controls for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",

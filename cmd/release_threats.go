@@ -13,4 +13,5 @@ var releaseThreatsCmd = &cobra.Command{
 func init() {
 	releaseThreatsCmd.Flags().String("threats-dir", "", "Root of the threat-catalogs repo (omit to fetch from GitHub)")
 	releaseThreatsCmd.Flags().StringP("output-dir", "o", "artifacts", "Directory to write generated files into")
+	releaseThreatsCmd.Flags().String("tag", "dev", "Release tag to embed in artifact metadata (e.g. v2026.04-rc)")
 }
