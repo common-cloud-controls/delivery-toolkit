@@ -14,6 +14,55 @@ import (
 
 const githubRawControlsBase = "https://raw.githubusercontent.com/common-cloud-controls/control-catalogs/refs/heads/main"
 
+// knownControlGroups defines control family groups that should be injected into
+// a catalog's Groups when referenced by one or more controls.
+var knownControlGroups = map[string]gemara.Group{
+	"CCC.Core.Data": {
+		Id:    "CCC.Core.Data",
+		Title: "Data",
+		Description: "The Data control family ensures the confidentiality, integrity,\n" +
+			"availability, and sovereignty of data across its lifecycle.\n" +
+			"These controls govern how data is transmitted, stored,\n" +
+			"replicated, and protected from unauthorized access, tampering,\n" +
+			"or exposure beyond defined trust perimeters.\n",
+	},
+	"CCC.Core.IAM": {
+		Id:    "CCC.Core.IAM",
+		Title: "Identity and Access Management",
+		Description: "The Identity and Access Management control family ensures\n" +
+			"that only trusted and authenticated entities can access\n" +
+			"resources. These controls establish strong authentication,\n" +
+			"enforce multi-factor verification, and restrict access to\n" +
+			"approved sources to prevent unauthorized use or data exfiltration.\n",
+	},
+	"CCC.Core.LM": {
+		Id:    "CCC.Core.LM",
+		Title: "Logging & Monitoring",
+		Description: "The Logging & Monitoring control family ensures that access,\n" +
+			"changes, and security-relevant events are captured, monitored,\n" +
+			"and alerted on in order to provide visibility, support\n" +
+			"incident response, and meet compliance requirements.\n",
+	},
+}
+
+// injectControlGroups adds known group definitions to the catalog's Groups
+// for any group IDs referenced by controls that aren't already present.
+func injectControlGroups(catalog *gemara.ControlCatalog) {
+	existing := map[string]bool{}
+	for _, g := range catalog.Groups {
+		existing[g.Id] = true
+	}
+	for _, ctrl := range catalog.Controls {
+		if ctrl.Group == "" || existing[ctrl.Group] {
+			continue
+		}
+		if g, ok := knownControlGroups[ctrl.Group]; ok {
+			catalog.Groups = append(catalog.Groups, g)
+			existing[ctrl.Group] = true
+		}
+	}
+}
+
 var generateControlsCmd = &cobra.Command{
 	Use:   "controls <path> <title>",
 	Short: "Generate YAML and Markdown from a controls catalog",
@@ -69,19 +118,28 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 	}
 
 	// Inject hardcoded metadata
+	catalogID, err := inferControlCatalogID(catalog.Controls)
+	if err != nil {
+		return err
+	}
+
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:            inferControlCatalogID(catalog.Controls),
-		Type:          gemara.ControlCatalogArtifact,
-		GemaraVersion: gemara.SchemaVersion,
-		Version:       tag,
-		Description:   "Controls for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Id:                catalogID,
+		Type:              gemara.ControlCatalogArtifact,
+		GemaraVersion:     gemara.SchemaVersion,
+		Version:           tag,
+		Description:       "Controls for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
 			Type: gemara.Human,
 		},
 	}
+
+	// Inject group definitions for any referenced control families
+	injectControlGroups(&catalog)
 
 	// Prepare output directory
 	outDir := filepath.Join(outputDir, catalogPath)
@@ -113,9 +171,11 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 
 // inferControlCatalogID derives the catalog ID from control entry IDs by stripping
 // the trailing numeric suffix. e.g. "CCC.ObjStor.CN01" → "CCC.ObjStor.CN"
-func inferControlCatalogID(controls []gemara.Control) string {
+// Core catalogs are mapped to their long canonical IDs.
+func inferControlCatalogID(controls []gemara.Control) (string, error) {
 	if len(controls) == 0 {
-		return "CCC"
+		return "", fmt.Errorf("cannot infer catalog ID: controls list is empty")
 	}
-	return trailingDigits.ReplaceAllString(controls[0].Id, "")
+	short := trailingDigits.ReplaceAllString(controls[0].Id, "")
+	return short, nil
 }

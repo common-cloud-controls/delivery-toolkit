@@ -48,7 +48,10 @@ func runPublishAll(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("reading %s.yaml: %w", t, err)
 		}
 
-		title := extractTitle(string(mdContent))
+		title, err := extractTitle(string(mdContent))
+		if err != nil {
+			return err
+		}
 		pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, t, tag)
 		mdDest := fmt.Sprintf("src/content/catalogs/%s/%s/%s.md", catalogPath, t, tag)
 		yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, t, tag)

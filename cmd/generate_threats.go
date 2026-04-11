@@ -70,13 +70,19 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 	}
 
 	// Inject hardcoded metadata
+	catalogID, err := inferThreatCatalogID(catalog.Threats)
+	if err != nil {
+		return err
+	}
+
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:            inferThreatCatalogID(catalog.Threats),
-		Type:          gemara.ThreatCatalogArtifact,
-		GemaraVersion: gemara.SchemaVersion,
-		Version:       tag,
-		Description:   "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Id:                catalogID,
+		Type:              gemara.ThreatCatalogArtifact,
+		GemaraVersion:     gemara.SchemaVersion,
+		Version:           tag,
+		Description:       "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
@@ -114,9 +120,11 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 
 // inferThreatCatalogID derives the catalog ID from threat entry IDs by stripping
 // the trailing numeric suffix. e.g. "CCC.ObjStor.TH01" → "CCC.ObjStor.TH"
-func inferThreatCatalogID(threats []gemara.Threat) string {
+// Core catalogs are mapped to their long canonical IDs.
+func inferThreatCatalogID(threats []gemara.Threat) (string, error) {
 	if len(threats) == 0 {
-		return "CCC"
+		return "", fmt.Errorf("cannot infer catalog ID: threats list is empty")
 	}
-	return trailingDigits.ReplaceAllString(threats[0].Id, "")
+	short := trailingDigits.ReplaceAllString(threats[0].Id, "")
+	return short, nil
 }

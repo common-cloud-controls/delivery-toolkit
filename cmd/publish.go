@@ -174,13 +174,13 @@ func githubCommitFiles(token, repo, message string, files map[string][]byte) err
 }
 
 // extractTitle reads the first `# ` heading from a markdown string.
-func extractTitle(md string) string {
+func extractTitle(md string) (string, error) {
 	for _, line := range strings.Split(md, "\n") {
 		if strings.HasPrefix(line, "# ") {
-			return strings.TrimPrefix(line, "# ")
+			return strings.TrimPrefix(line, "# "), nil
 		}
 	}
-	return "CCC Catalog"
+	return "", fmt.Errorf("markdown has no '# ' heading; cannot extract title")
 }
 
 // withFrontmatter prepends YAML frontmatter to a markdown string so the website
@@ -197,7 +197,10 @@ func publishArtifact(token, websiteRepo, catalogPath, tag, artifactType string, 
 	yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, artifactType, tag)
 	commitMsg := fmt.Sprintf("release: %s %s@%s", catalogPath, artifactType, tag)
 
-	title := extractTitle(string(mdContent))
+	title, err := extractTitle(string(mdContent))
+	if err != nil {
+		return err
+	}
 	pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, artifactType, tag)
 	mdWithFM := withFrontmatter(string(mdContent), title, pagePath)
 

@@ -15,13 +15,48 @@ import (
 
 var trailingDigits = regexp.MustCompile(`\d+$`)
 
+// coreCatalogTitles maps core catalog IDs to human-readable titles.
+var coreCatalogTitles = map[string]string{
+	"CCC.Core.Capabilities": "CCC Core Capabilities",
+	"CCC.Core.Threats":      "CCC Core Threats",
+	"CCC.Core.Controls":     "CCC Core Controls",
+}
+
+
+// mappingRefsFromImports derives MappingReferences from a catalog's Imports
+// field. Each unique ReferenceId in the imports produces one MappingReference
+// entry so that gemara can resolve cross-catalog references.
+func mappingRefsFromImports(imports []gemara.MultiEntryMapping, version string) []gemara.MappingReference {
+	seen := map[string]bool{}
+	var refs []gemara.MappingReference
+	for _, imp := range imports {
+		id := imp.ReferenceId
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		title := coreCatalogTitles[id]
+		if title == "" {
+			title = id
+		}
+		refs = append(refs, gemara.MappingReference{
+			Id:      id,
+			Title:   title,
+			Version: version,
+		})
+	}
+	return refs
+}
+
 // inferCatalogID derives the catalog ID from capability entry IDs by stripping
 // the trailing numeric suffix. e.g. "CCC.ObjStor.CP01" → "CCC.ObjStor.CP"
-func inferCatalogID(capabilities []gemara.Capability) string {
+// Core catalogs are mapped to their long canonical IDs.
+func inferCatalogID(capabilities []gemara.Capability) (string, error) {
 	if len(capabilities) == 0 {
-		return "CCC"
+		return "", fmt.Errorf("cannot infer catalog ID: capabilities list is empty")
 	}
-	return trailingDigits.ReplaceAllString(capabilities[0].Id, "")
+	short := trailingDigits.ReplaceAllString(capabilities[0].Id, "")
+	return short, nil
 }
 
 const githubRawBase = "https://raw.githubusercontent.com/common-cloud-controls/capability-catalogs/refs/heads/main"
@@ -105,13 +140,19 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 
 	// Inject hardcoded metadata
 	// TODO: replace ControlCatalogArtifact with a CapabilityCatalogArtifact once added to go-gemara
+	catalogID, err := inferCatalogID(catalog.Capabilities)
+	if err != nil {
+		return err
+	}
+
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:            inferCatalogID(catalog.Capabilities),
-		Type:          gemara.ControlCatalogArtifact,
-		GemaraVersion: gemara.SchemaVersion,
-		Version:       tag,
-		Description:   "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		Id:                catalogID,
+		Type:              gemara.ControlCatalogArtifact,
+		GemaraVersion:     gemara.SchemaVersion,
+		Version:           tag,
+		Description:       "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
