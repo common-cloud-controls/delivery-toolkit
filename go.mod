@@ -3,7 +3,7 @@ module github.com/finos/common-cloud-controls
 go 1.25.0
 
 require (
-	github.com/gemaraproj/go-gemara v0.2.0
+	github.com/gemaraproj/go-gemara v0.3.0
 	github.com/spf13/cobra v1.10.1
 	gopkg.in/yaml.v3 v3.0.1
 )
