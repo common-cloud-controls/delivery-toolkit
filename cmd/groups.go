@@ -7,59 +7,98 @@ import gemara "github.com/gemaraproj/go-gemara"
 // references one of these group IDs, the full definition is automatically
 // injected into the catalog's Groups during generation.
 var knownGroups = map[string]gemara.Group{
-	"CCC.Core.Encryption": {
-		Id:    "CCC.Core.Encryption",
+	"Encryption": {
+		Id:    "Encryption",
 		Title: "Encryption",
-		Description: "The Encryption group covers controls, threats, and capabilities related to\n" +
+		Description: "The Encryption group covers entries related to\n" +
 			"protecting data confidentiality and integrity through cryptographic mechanisms.\n" +
 			"This includes encryption in transit and at rest, key management, and certificate\n" +
 			"lifecycle management.\n",
 	},
-	"CCC.Core.Access": {
-		Id:    "CCC.Core.Access",
+	"Access": {
+		Id:    "Access",
 		Title: "Access Control",
-		Description: "The Access Control group covers controls, threats, and capabilities related to\n" +
+		Description: "The Access Control group covers entries related to\n" +
 			"authentication, authorization, and trust perimeter enforcement. This includes\n" +
 			"multi-factor authentication, least privilege access, network access rules, and\n" +
 			"prevention of unauthorized access or reconnaissance.\n",
 	},
-	"CCC.Core.Observability": {
-		Id:    "CCC.Core.Observability",
+	"Observability": {
+		Id:    "Observability",
 		Title: "Observability",
-		Description: "The Observability group covers controls, threats, and capabilities related to\n" +
+		Description: "The Observability group covers entries related to\n" +
 			"logging, monitoring, metrics, alerting, and event publication. This includes\n" +
 			"audit trail integrity, enumeration detection, and protection against tampering\n" +
 			"or unauthorized access to operational telemetry.\n",
 	},
-	"CCC.Core.Data": {
-		Id:    "CCC.Core.Data",
+	"Data": {
+		Id:    "Data",
 		Title: "Data Resilience",
-		Description: "The Data Resilience group covers controls, threats, and capabilities related to\n" +
+		Description: "The Data Resilience group covers entries related to\n" +
 			"ensuring data availability, integrity, and sovereignty across its lifecycle.\n" +
 			"This includes replication, backup, recovery, region restrictions, and protection\n" +
 			"against data loss or corruption.\n",
 	},
-	"CCC.Core.Resource": {
-		Id:    "CCC.Core.Resource",
+	"Resource": {
+		Id:    "Resource",
 		Title: "Resource Management",
-		Description: "The Resource Management group covers threats and capabilities related to\n" +
+		Description: "The Resource Management group covers entries related to\n" +
 			"the lifecycle, configuration, and operational integrity of cloud resources.\n" +
 			"This includes resource exhaustion, tag manipulation, version rollback,\n" +
 			"scaling, and cost management.\n",
 	},
-	"CCC.Core.Compute": {
-		Id:    "CCC.Core.Compute",
+	"Compute": {
+		Id:    "Compute",
 		Title: "Compute",
-		Description: "The Compute group covers capabilities related to processing, execution,\n" +
+		Description: "The Compute group covers entries related to processing, execution,\n" +
 			"and runtime infrastructure. This includes CPU, memory, storage allocation,\n" +
 			"network ports, command-line interfaces, and elastic scaling.\n",
 	},
-	"CCC.Core.Ingestion": {
-		Id:    "CCC.Core.Ingestion",
+	"Ingestion": {
+		Id:    "Ingestion",
 		Title: "Ingestion",
-		Description: "The Ingestion group covers capabilities related to how a service receives\n" +
+		Description: "The Ingestion group covers entries related to how a service receives\n" +
 			"or retrieves data, inputs, or commands for processing. This includes both\n" +
 			"active (pull-based) and passive (push-based) ingestion patterns.\n",
+	},
+	"Networking": {
+		Id:    "Networking",
+		Title: "Networking",
+		Description: "The Networking group covers entries related to network infrastructure,\n" +
+			"connectivity, and traffic management. This includes virtual networks, subnets,\n" +
+			"load balancing, DNS, routing, peering, and network-level access controls.\n",
+	},
+	"Orchestration": {
+		Id:    "Orchestration",
+		Title: "Orchestration",
+		Description: "The Orchestration group covers entries related to coordinating and\n" +
+			"managing workloads across distributed systems. This includes container\n" +
+			"orchestration, job scheduling, CI/CD pipelines, build automation, and\n" +
+			"service mesh management.\n",
+	},
+	"Processing": {
+		Id:    "Processing",
+		Title: "Data Processing",
+		Description: "The Data Processing group covers entries related to transforming,\n" +
+			"enriching, and moving data through pipelines. This includes ETL/ELT,\n" +
+			"stream and batch processing, data lineage, schema evolution, and\n" +
+			"workflow orchestration for data workloads.\n",
+	},
+	"Messaging": {
+		Id:    "Messaging",
+		Title: "Messaging",
+		Description: "The Messaging group covers entries related to asynchronous\n" +
+			"communication between services. This includes publish-subscribe,\n" +
+			"message queuing, topic management, delivery guarantees, ordering,\n" +
+			"filtering, and dead-letter handling.\n",
+	},
+	"MachineLearning": {
+		Id:    "MachineLearning",
+		Title: "Machine Learning",
+		Description: "The Machine Learning group covers entries related to building,\n" +
+			"training, deploying, and managing ML models and AI systems. This includes\n" +
+			"development environments, experiment tracking, model registries, inference,\n" +
+			"generative AI, prompt engineering, and model governance.\n",
 	},
 }
 

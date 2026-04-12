@@ -19,14 +19,14 @@ groups:
     These controls govern how data is transmitted, stored,
     replicated, and protected from unauthorized access, tampering,
     or exposure beyond defined trust perimeters.
-- id: CCC.Core.Access
+- id: Access
   title: Access Control
   description: |
     The Access Control group covers controls, threats, and capabilities related to
     authentication, authorization, and trust perimeter enforcement. This includes
     multi-factor authentication, least privilege access, network access rules, and
     prevention of unauthorized access or reconnaissance.
-- id: CCC.Core.Observability
+- id: Observability
   title: Observability
   description: |
     The Observability group covers controls, threats, and capabilities related to
@@ -39,7 +39,7 @@ controls:
   objective: |
     Ensure that all communications are encrypted in transit to protect data
     integrity and confidentiality.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN01.TR01
     text: |
@@ -93,7 +93,7 @@ controls:
     designated as restricted or prohibited, to comply with
     regulatory requirements and reduce exposure to geopolitical
     risks.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN06.TR01
     text: |
@@ -145,7 +145,7 @@ controls:
     Ensure that data is replicated across multiple
     zones or regions to protect against data loss due to hardware
     failures, natural disasters, or other catastrophic events.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN08.TR01
     text: |
@@ -193,7 +193,7 @@ controls:
     Access logs should always be considered sensitive.
     Ensure that access logs are protected against unauthorized
     access, tampering, or deletion.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN09.TR01
     text: |
@@ -257,7 +257,7 @@ controls:
     of defined trust perimeter. An untrusted destination is defined
     as a resource that exists outside of a specified trusted
     identity or network or data perimeter.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN10.TR01
     text: |
@@ -294,7 +294,7 @@ controls:
   objective: |
     Ensure that all data stored is encrypted at rest to maintain
     confidentiality and integrity.
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN02.TR01
     text: |
@@ -334,7 +334,7 @@ controls:
     Ensure that encryption keys are managed securely by enforcing
     the use of approved algorithms, regular key rotation, and
     customer-managed encryption keys (CMEKs).
-  group: CCC.Core.Data
+  group: Data
   assessment-requirements:
   - id: CCC.Core.CN11.TR01
     text: |
@@ -405,7 +405,7 @@ controls:
     something you know, something you have, or something you are. In the
     case of programattically accessible services, such as API endpoints, this
     includes a combination of API keys or tokens and network restrictions.
-  group: CCC.Core.Access
+  group: Access
   assessment-requirements:
   - id: CCC.Core.CN03.TR01
     text: |
@@ -493,7 +493,7 @@ controls:
     by adversaries. This includes restricting access based on trust
     criteria such as IP allowlists, domain restrictions, and tenant
     isolation.
-  group: CCC.Core.Access
+  group: Access
   assessment-requirements:
   - id: CCC.Core.CN05.TR01
     text: |
@@ -559,7 +559,7 @@ controls:
   objective: |
     Ensure that all access and changes are logged to maintain a
     detailed audit trail for security and compliance purposes.
-  group: CCC.Core.Observability
+  group: Observability
   assessment-requirements:
   - id: CCC.Core.CN04.TR01
     text: |
@@ -616,7 +616,7 @@ controls:
     Ensure that logs and associated alerts are generated when
     unusual enumeration activity is detected that may indicate
     reconnaissance activities.
-  group: CCC.Core.Observability
+  group: Observability
   assessment-requirements:
   - id: CCC.Core.CN07.TR01
     text: |
