@@ -90,6 +90,9 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 		},
 	}
 
+	// Inject group definitions for any referenced threat families
+	injectThreatGroups(&catalog)
+
 	// Prepare output directory
 	outDir := filepath.Join(outputDir, catalogPath)
 	if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -116,6 +119,16 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 
 	fmt.Printf("Generated artifacts in %s\n", outDir)
 	return nil
+}
+
+// injectThreatGroups adds known group definitions to the catalog's Groups
+// for any group IDs referenced by threats that aren't already present.
+func injectThreatGroups(catalog *gemara.ThreatCatalog) {
+	var ids []string
+	for _, t := range catalog.Threats {
+		ids = append(ids, t.Group)
+	}
+	injectGroups(&catalog.Groups, ids)
 }
 
 // inferThreatCatalogID derives the catalog ID from threat entry IDs by stripping

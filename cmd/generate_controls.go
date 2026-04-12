@@ -14,53 +14,14 @@ import (
 
 const githubRawControlsBase = "https://raw.githubusercontent.com/common-cloud-controls/control-catalogs/refs/heads/main"
 
-// knownControlGroups defines control family groups that should be injected into
-// a catalog's Groups when referenced by one or more controls.
-var knownControlGroups = map[string]gemara.Group{
-	"CCC.Core.Data": {
-		Id:    "CCC.Core.Data",
-		Title: "Data",
-		Description: "The Data control family ensures the confidentiality, integrity,\n" +
-			"availability, and sovereignty of data across its lifecycle.\n" +
-			"These controls govern how data is transmitted, stored,\n" +
-			"replicated, and protected from unauthorized access, tampering,\n" +
-			"or exposure beyond defined trust perimeters.\n",
-	},
-	"CCC.Core.IAM": {
-		Id:    "CCC.Core.IAM",
-		Title: "Identity and Access Management",
-		Description: "The Identity and Access Management control family ensures\n" +
-			"that only trusted and authenticated entities can access\n" +
-			"resources. These controls establish strong authentication,\n" +
-			"enforce multi-factor verification, and restrict access to\n" +
-			"approved sources to prevent unauthorized use or data exfiltration.\n",
-	},
-	"CCC.Core.LM": {
-		Id:    "CCC.Core.LM",
-		Title: "Logging & Monitoring",
-		Description: "The Logging & Monitoring control family ensures that access,\n" +
-			"changes, and security-relevant events are captured, monitored,\n" +
-			"and alerted on in order to provide visibility, support\n" +
-			"incident response, and meet compliance requirements.\n",
-	},
-}
-
 // injectControlGroups adds known group definitions to the catalog's Groups
 // for any group IDs referenced by controls that aren't already present.
 func injectControlGroups(catalog *gemara.ControlCatalog) {
-	existing := map[string]bool{}
-	for _, g := range catalog.Groups {
-		existing[g.Id] = true
-	}
+	var ids []string
 	for _, ctrl := range catalog.Controls {
-		if ctrl.Group == "" || existing[ctrl.Group] {
-			continue
-		}
-		if g, ok := knownControlGroups[ctrl.Group]; ok {
-			catalog.Groups = append(catalog.Groups, g)
-			existing[ctrl.Group] = true
-		}
+		ids = append(ids, ctrl.Group)
 	}
+	injectGroups(&catalog.Groups, ids)
 }
 
 var generateControlsCmd = &cobra.Command{

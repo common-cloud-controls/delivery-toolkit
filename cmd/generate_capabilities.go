@@ -160,6 +160,9 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 		},
 	}
 
+	// Inject group definitions for any referenced capability families
+	injectCapabilityGroups(&catalog)
+
 	// Prepare output directory
 	outDir := filepath.Join(outputDir, catalogPath)
 	if err := os.MkdirAll(outDir, 0755); err != nil {
@@ -186,6 +189,16 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 
 	fmt.Printf("Generated artifacts in %s\n", outDir)
 	return nil
+}
+
+// injectCapabilityGroups adds known group definitions to the catalog's Groups
+// for any group IDs referenced by capabilities that aren't already present.
+func injectCapabilityGroups(catalog *gemara.CapabilityCatalog) {
+	var ids []string
+	for _, c := range catalog.Capabilities {
+		ids = append(ids, c.Group)
+	}
+	injectGroups(&catalog.Groups, ids)
 }
 
 func fetchURL(url string) ([]byte, error) {
