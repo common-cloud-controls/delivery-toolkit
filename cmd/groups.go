@@ -102,6 +102,50 @@ var knownGroups = map[string]gemara.Group{
 	},
 }
 
+// tlpApplicabilityGroups defines the Traffic Light Protocol (TLP) v2.0
+// applicability groups injected into every catalog's metadata. These describe
+// the sharing boundaries applied to assessment requirements.
+// Reference: https://www.first.org/tlp/
+var tlpApplicabilityGroups = []gemara.Group{
+	{
+		Id:    "tlp_red",
+		Title: "TLP:RED",
+		Description: "For the eyes and ears of individual recipients only, no further disclosure. " +
+			"Sources may use TLP:RED when information cannot be effectively acted upon without significant " +
+			"risk for the privacy, reputation, or operations of the organizations involved.",
+	},
+	{
+		Id:    "tlp_amber_strict",
+		Title: "TLP:AMBER+STRICT",
+		Description: "Limited disclosure, recipients can only spread this on a need-to-know basis " +
+			"within their organization only. Sources may use TLP:AMBER+STRICT when information requires " +
+			"support to be effectively acted upon, yet carries risk to privacy, reputation, or operations " +
+			"if shared outside of the organization.",
+	},
+	{
+		Id:    "tlp_amber",
+		Title: "TLP:AMBER",
+		Description: "Limited disclosure, recipients can spread this on a need-to-know basis within " +
+			"their organization and to its clients. Sources may use TLP:AMBER when information requires " +
+			"support to be effectively acted upon, yet carries risk to privacy, reputation, or operations " +
+			"if shared outside of the organizations involved.",
+	},
+	{
+		Id:    "tlp_green",
+		Title: "TLP:GREEN",
+		Description: "Limited disclosure, recipients can spread this within their community. " +
+			"Sources may use TLP:GREEN when information is useful to increase awareness within their " +
+			"wider community.",
+	},
+	{
+		Id:    "tlp_clear",
+		Title: "TLP:CLEAR",
+		Description: "Recipients can spread this to the world, there is no limit on disclosure. " +
+			"Sources may use TLP:CLEAR when information carries minimal or no foreseeable risk of misuse, " +
+			"in accordance with applicable rules and procedures for public release.",
+	},
+}
+
 // injectGroups adds known group definitions to a catalog's group list for any
 // group IDs that are referenced by entries but not already present.
 func injectGroups(groups *[]gemara.Group, referencedGroupIDs []string) {

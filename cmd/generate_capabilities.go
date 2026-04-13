@@ -147,12 +147,13 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:                catalogID,
-		Type:              gemara.ControlCatalogArtifact,
-		GemaraVersion:     gemara.SchemaVersion,
-		Version:           tag,
-		Description:       "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
-		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
+		Id:                  catalogID,
+		Type:                gemara.ControlCatalogArtifact,
+		GemaraVersion:       gemara.SchemaVersion,
+		Version:             tag,
+		Description:         "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences:   mappingRefsFromImports(catalog.Imports, tag),
+		ApplicabilityGroups: tlpApplicabilityGroups,
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
