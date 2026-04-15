@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	gemara "github.com/gemaraproj/go-gemara"
+	"github.com/gemaraproj/go-gemara/gemaraconv"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -77,13 +79,12 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:                  catalogID,
-		Type:                gemara.ThreatCatalogArtifact,
-		GemaraVersion:       gemara.SchemaVersion,
-		Version:             tag,
-		Description:         "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
-		MappingReferences:   mappingRefsFromImports(catalog.Imports, tag),
-		ApplicabilityGroups: tlpApplicabilityGroups,
+		Id:                catalogID,
+		Type:              gemara.ThreatCatalogArtifact,
+		GemaraVersion:     gemara.SchemaVersion,
+		Version:           tag,
+		Description:       "Threats for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
@@ -109,12 +110,17 @@ func doGenerateThreats(catalogPath, catalogTitle, serviceTitle, threatsDir, outp
 		return fmt.Errorf("writing threats.yaml: %w", err)
 	}
 
-	// Write Markdown
-	md, err := renderThreatsMarkdown(&catalog)
+	// Render markdown via go-gemara and prefix site-friendly frontmatter.
+	body, err := gemaraconv.ThreatCatalog(&catalog).ToMarkdown(
+		context.Background(),
+		gemaraconv.WithCrossRefResolver(siteCrossRefResolver(catalogPath, tag)),
+	)
 	if err != nil {
 		return fmt.Errorf("rendering Markdown: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(outDir, "threats.md"), []byte(md), 0644); err != nil {
+	fm := catalogFrontmatter(catalog.Metadata, catalogTitle, catalogPath, serviceTitle, tag, "threat")
+	out := append([]byte(fm.render()), body...)
+	if err := os.WriteFile(filepath.Join(outDir, "threats.md"), out, 0644); err != nil {
 		return fmt.Errorf("writing threats.md: %w", err)
 	}
 

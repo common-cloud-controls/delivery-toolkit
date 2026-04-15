@@ -118,12 +118,17 @@ func doGenerateControls(catalogPath, catalogTitle, serviceTitle, controlsDir, ou
 		return fmt.Errorf("writing controls.yaml: %w", err)
 	}
 
-	// Write Markdown using the SDK's built-in renderer
-	md, err := gemaraconv.ControlCatalog(&catalog).ToMarkdown(context.Background())
+	// Render markdown via go-gemara and prefix site-friendly frontmatter.
+	body, err := gemaraconv.ControlCatalog(&catalog).ToMarkdown(
+		context.Background(),
+		gemaraconv.WithCrossRefResolver(siteCrossRefResolver(catalogPath, tag)),
+	)
 	if err != nil {
 		return fmt.Errorf("rendering Markdown: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(outDir, "controls.md"), md, 0644); err != nil {
+	fm := catalogFrontmatter(catalog.Metadata, catalogTitle, catalogPath, serviceTitle, tag, "control")
+	out := append([]byte(fm.render()), body...)
+	if err := os.WriteFile(filepath.Join(outDir, "controls.md"), out, 0644); err != nil {
 		return fmt.Errorf("writing controls.md: %w", err)
 	}
 

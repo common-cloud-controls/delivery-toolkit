@@ -191,27 +191,42 @@ func withFrontmatter(md, title, pagePath string) []byte {
 }
 
 // publishArtifact commits a single catalog type's markdown and YAML artifacts
-// to the website repository in a single commit.
+// to the website repository in a single commit. Markdown that already carries
+// YAML frontmatter (e.g. emitted by `ccc generate`) is passed through as-is;
+// older bare-body markdown is wrapped with a minimal title+path frontmatter.
 func publishArtifact(token, websiteRepo, catalogPath, tag, artifactType string, mdContent, yamlContent []byte) error {
 	mdDest := fmt.Sprintf("src/content/catalogs/%s/%s/%s.md", catalogPath, artifactType, tag)
 	yamlDest := fmt.Sprintf("public/data/catalogs/%s/%s/%s.yaml", catalogPath, artifactType, tag)
 	commitMsg := fmt.Sprintf("release: %s %s@%s", catalogPath, artifactType, tag)
 
-	title, err := extractTitle(string(mdContent))
+	mdFinal, err := ensureFrontmatter(mdContent, catalogPath, artifactType, tag)
 	if err != nil {
 		return err
 	}
-	pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, artifactType, tag)
-	mdWithFM := withFrontmatter(string(mdContent), title, pagePath)
 
 	if err := githubCommitFiles(token, websiteRepo, commitMsg, map[string][]byte{
-		mdDest:   mdWithFM,
+		mdDest:   mdFinal,
 		yamlDest: yamlContent,
 	}); err != nil {
 		return err
 	}
 	fmt.Printf("Published %s and %s\n", mdDest, yamlDest)
 	return nil
+}
+
+// ensureFrontmatter returns mdContent unchanged when it already begins with a
+// YAML frontmatter block; otherwise it prepends a minimal `title` / `path`
+// frontmatter derived from the first `# ` heading.
+func ensureFrontmatter(mdContent []byte, catalogPath, artifactType, tag string) ([]byte, error) {
+	if bytes.HasPrefix(mdContent, []byte("---\n")) || bytes.HasPrefix(mdContent, []byte("---\r\n")) {
+		return mdContent, nil
+	}
+	title, err := extractTitle(string(mdContent))
+	if err != nil {
+		return nil, err
+	}
+	pagePath := fmt.Sprintf("/catalogs/%s/%s/%s", catalogPath, artifactType, tag)
+	return withFrontmatter(string(mdContent), title, pagePath), nil
 }
 
 // resolveToken returns the token flag value, falling back to $GITHUB_TOKEN.

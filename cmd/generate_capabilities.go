@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"regexp"
 
 	gemara "github.com/gemaraproj/go-gemara"
+	"github.com/gemaraproj/go-gemara/gemaraconv"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -139,7 +141,6 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 	}
 
 	// Inject hardcoded metadata
-	// TODO: replace ControlCatalogArtifact with a CapabilityCatalogArtifact once added to go-gemara
 	catalogID, err := inferCatalogID(catalog.Capabilities)
 	if err != nil {
 		return err
@@ -147,13 +148,12 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 
 	catalog.Title = catalogTitle
 	catalog.Metadata = gemara.Metadata{
-		Id:                  catalogID,
-		Type:                gemara.ControlCatalogArtifact,
-		GemaraVersion:       gemara.SchemaVersion,
-		Version:             tag,
-		Description:         "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
-		MappingReferences:   mappingRefsFromImports(catalog.Imports, tag),
-		ApplicabilityGroups: tlpApplicabilityGroups,
+		Id:                catalogID,
+		Type:              gemara.CapabilityCatalogArtifact,
+		GemaraVersion:     gemara.SchemaVersion,
+		Version:           tag,
+		Description:       "Capabilities for " + serviceTitle + " technologies, as defined by the FINOS Common Cloud Controls project.",
+		MappingReferences: mappingRefsFromImports(catalog.Imports, tag),
 		Author: gemara.Actor{
 			Id:   "FINOS-CCC",
 			Name: "FINOS Common Cloud Controls",
@@ -179,12 +179,17 @@ func doGenerateCapabilities(catalogPath, catalogTitle, serviceTitle, capabilitie
 		return fmt.Errorf("writing capabilities.yaml: %w", err)
 	}
 
-	// Write Markdown
-	md, err := renderMarkdown(&catalog)
+	// Render markdown via go-gemara and prefix site-friendly frontmatter.
+	body, err := gemaraconv.CapabilityCatalog(&catalog).ToMarkdown(
+		context.Background(),
+		gemaraconv.WithCrossRefResolver(siteCrossRefResolver(catalogPath, tag)),
+	)
 	if err != nil {
 		return fmt.Errorf("rendering Markdown: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(outDir, "capabilities.md"), []byte(md), 0644); err != nil {
+	fm := catalogFrontmatter(catalog.Metadata, catalogTitle, catalogPath, serviceTitle, tag, "capability")
+	out := append([]byte(fm.render()), body...)
+	if err := os.WriteFile(filepath.Join(outDir, "capabilities.md"), out, 0644); err != nil {
 		return fmt.Errorf("writing capabilities.md: %w", err)
 	}
 

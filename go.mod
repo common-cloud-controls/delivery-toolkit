@@ -8,6 +8,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+replace github.com/gemaraproj/go-gemara => ../go-gemara
+
 require (
 	github.com/defenseunicorns/go-oscal v0.7.0 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect

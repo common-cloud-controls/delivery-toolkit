@@ -17,6 +17,7 @@ func init() {
 	rootCmd.AddCommand(cmd.GenerateCmd)
 	rootCmd.AddCommand(cmd.ReleaseCmd)
 	rootCmd.AddCommand(cmd.PublishCmd)
+	rootCmd.AddCommand(cmd.PreviewLocalCmd)
 }
 
 func main() {
